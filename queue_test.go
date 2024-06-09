@@ -46,7 +46,7 @@ func TestQueue_Publish(t *testing.T) {
 				Topic:    tt.topic,
 				Payload:  tt.payload,
 				Tries:    0,
-				MaxTries: tt.maxTries,
+				MaxTries: 3,
 				Meta: Meta{
 					Created: nowFunc(),
 				},

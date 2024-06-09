@@ -8,6 +8,8 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	mongo "go.mongodb.org/mongo-driver/mongo"
 
+	options "go.mongodb.org/mongo-driver/mongo/options"
+
 	primitive "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -117,17 +119,24 @@ func (_c *DbInterfaceMock_CreateIndexes_Call) RunAndReturn(run func([]mongo.Inde
 	return _c
 }
 
-// FindOneAndUpdate provides a mock function with given fields: filter, update
-func (_m *DbInterfaceMock) FindOneAndUpdate(filter interface{}, update interface{}) *mongo.SingleResult {
-	ret := _m.Called(filter, update)
+// FindOneAndUpdate provides a mock function with given fields: filter, update, opts
+func (_m *DbInterfaceMock) FindOneAndUpdate(filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, filter, update)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindOneAndUpdate")
 	}
 
 	var r0 *mongo.SingleResult
-	if rf, ok := ret.Get(0).(func(interface{}, interface{}) *mongo.SingleResult); ok {
-		r0 = rf(filter, update)
+	if rf, ok := ret.Get(0).(func(interface{}, interface{}, ...*options.FindOneAndUpdateOptions) *mongo.SingleResult); ok {
+		r0 = rf(filter, update, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*mongo.SingleResult)
@@ -145,13 +154,21 @@ type DbInterfaceMock_FindOneAndUpdate_Call struct {
 // FindOneAndUpdate is a helper method to define mock.On call
 //   - filter interface{}
 //   - update interface{}
-func (_e *DbInterfaceMock_Expecter) FindOneAndUpdate(filter interface{}, update interface{}) *DbInterfaceMock_FindOneAndUpdate_Call {
-	return &DbInterfaceMock_FindOneAndUpdate_Call{Call: _e.mock.On("FindOneAndUpdate", filter, update)}
+//   - opts ...*options.FindOneAndUpdateOptions
+func (_e *DbInterfaceMock_Expecter) FindOneAndUpdate(filter interface{}, update interface{}, opts ...interface{}) *DbInterfaceMock_FindOneAndUpdate_Call {
+	return &DbInterfaceMock_FindOneAndUpdate_Call{Call: _e.mock.On("FindOneAndUpdate",
+		append([]interface{}{filter, update}, opts...)...)}
 }
 
-func (_c *DbInterfaceMock_FindOneAndUpdate_Call) Run(run func(filter interface{}, update interface{})) *DbInterfaceMock_FindOneAndUpdate_Call {
+func (_c *DbInterfaceMock_FindOneAndUpdate_Call) Run(run func(filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions)) *DbInterfaceMock_FindOneAndUpdate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(interface{}), args[1].(interface{}))
+		variadicArgs := make([]*options.FindOneAndUpdateOptions, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(*options.FindOneAndUpdateOptions)
+			}
+		}
+		run(args[0].(interface{}), args[1].(interface{}), variadicArgs...)
 	})
 	return _c
 }
@@ -161,7 +178,7 @@ func (_c *DbInterfaceMock_FindOneAndUpdate_Call) Return(_a0 *mongo.SingleResult)
 	return _c
 }
 
-func (_c *DbInterfaceMock_FindOneAndUpdate_Call) RunAndReturn(run func(interface{}, interface{}) *mongo.SingleResult) *DbInterfaceMock_FindOneAndUpdate_Call {
+func (_c *DbInterfaceMock_FindOneAndUpdate_Call) RunAndReturn(run func(interface{}, interface{}, ...*options.FindOneAndUpdateOptions) *mongo.SingleResult) *DbInterfaceMock_FindOneAndUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }

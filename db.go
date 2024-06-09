@@ -10,7 +10,7 @@ import (
 
 type DbInterface interface {
 	InsertOne(document interface{}) (primitive.ObjectID, error)
-	FindOneAndUpdate(filter interface{}, update interface{}) *mongo.SingleResult
+	FindOneAndUpdate(filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult
 	UpdateOne(filter interface{}, update interface{}) error
 	UpdateMany(filter interface{}, update interface{}) error
 	Watch(pipeline interface{}) (*mongo.ChangeStream, error)
@@ -45,9 +45,9 @@ func (d *StdDb) InsertOne(document interface{}) (primitive.ObjectID, error) {
 	return res.InsertedID.(primitive.ObjectID), nil
 }
 
-func (d *StdDb) FindOneAndUpdate(filter interface{}, update interface{}) *mongo.SingleResult {
-	res := d.collection.FindOneAndUpdate(d.context, filter, update,
-		options.FindOneAndUpdate().SetReturnDocument(options.After))
+func (d *StdDb) FindOneAndUpdate(filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult {
+	opts = append(opts, options.FindOneAndUpdate().SetReturnDocument(options.After))
+	res := d.collection.FindOneAndUpdate(d.context, filter, update, opts...)
 	if res == nil {
 		return mongo.NewSingleResultFromDocument(nil, errors.New("no result returned"), nil)
 	}

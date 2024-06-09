@@ -94,7 +94,9 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 		bson.M{
 			"$set": bson.M{"state": StateRunning, "meta.dispatched": time.Now()},
 			"$inc": bson.M{"tries": 1},
-		})
+		},
+		options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}),
+	)
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 		return nil, nil
@@ -111,15 +113,30 @@ type Callback func(t Task)
 
 func (q *Queue) Subscribe(topic string, cb Callback) error {
 	pipeline := bson.D{
-		{"$match", bson.D{{"operationType", "insert"}, {"fullDocument.topic", topic}, {"state", StatePending}}},
+		{"$match", bson.D{{"operationType", "insert"}, {"fullDocument.topic", topic}, {"fullDocument.state", StatePending}}},
 	}
 
 	stream, err := q.db.Watch(mongo.Pipeline{pipeline})
 	if err != nil {
 		return err
 	}
-
 	defer stream.Close(q.db.Context())
+
+	processedUntil := nowFunc()
+	// process unprocessed tasks scheduled before we started watching
+	for {
+		task, err := q.GetNext(topic)
+		if err != nil {
+			return err
+		}
+
+		if task == nil {
+			break
+		}
+
+		processedUntil = task.Meta.Created
+		cb(*task)
+	}
 
 	for stream.Next(q.db.Context()) {
 		var event struct {
@@ -127,6 +144,11 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 		}
 
 		if err := stream.Decode(&event); err != nil {
+			continue
+		}
+
+		// already processed
+		if event.Task.Meta.Created.Before(processedUntil) {
 			continue
 		}
 
