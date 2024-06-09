@@ -42,6 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	//goland:noinspection ALL
 	defer client.Disconnect(ctx)
 
 	collection := client.Database(*dbName).Collection(*collName)
@@ -59,7 +60,7 @@ func main() {
 		// inlined to be more readable, practically this func would be somewhere else
 		workerFunc := func(qu *queue.Queue, task queue.Task) {
 			fmt.Println("worker", task)
-			qu.Ack(task.Id.Hex())
+			_ = qu.Ack(task.Id.Hex())
 		}
 
 		var wg sync.WaitGroup

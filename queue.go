@@ -120,6 +120,7 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 	if err != nil {
 		return err
 	}
+	//goland:noinspection ALL
 	defer stream.Close(q.db.Context())
 
 	processedUntil := nowFunc()
