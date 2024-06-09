@@ -1,0 +1,12 @@
+quiet: False
+disable-version-string: True
+with-expecter: True
+mockname: "{{.InterfaceName}}Mock"
+filename: "{{.InterfaceNameLower}}_test.go"
+outpkg: "{{.PackageName}}"
+dir: "{{.InterfaceDir}}"
+inpackage: True
+packages:
+  github.com/mbretter/go-mongodb-queue:
+    interfaces:
+      DbInterface:
