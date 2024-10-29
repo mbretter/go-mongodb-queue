@@ -13,9 +13,15 @@ type DbInterface interface {
 	FindOneAndUpdate(filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult
 	UpdateOne(filter interface{}, update interface{}) error
 	UpdateMany(filter interface{}, update interface{}) error
-	Watch(pipeline interface{}) (*mongo.ChangeStream, error)
+	Watch(pipeline interface{}) (ChangeStreamInterface, error)
 	CreateIndexes(index []mongo.IndexModel) error
 	Context() context.Context
+}
+
+type ChangeStreamInterface interface {
+	Next(ctx context.Context) bool
+	Decode(v interface{}) error
+	Close(ctx context.Context) error
 }
 
 type StdDb struct {
@@ -64,7 +70,7 @@ func (d *StdDb) UpdateMany(filter interface{}, update interface{}) error {
 	return err
 }
 
-func (d *StdDb) Watch(pipeline interface{}) (*mongo.ChangeStream, error) {
+func (d *StdDb) Watch(pipeline interface{}) (ChangeStreamInterface, error) {
 	return d.collection.Watch(d.context, pipeline)
 }
 

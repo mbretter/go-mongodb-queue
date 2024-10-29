@@ -10,3 +10,4 @@ packages:
   github.com/mbretter/go-mongodb-queue:
     interfaces:
       DbInterface:
+      ChangeStreamInterface:

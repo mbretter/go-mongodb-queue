@@ -336,23 +336,23 @@ func (_c *DbInterfaceMock_UpdateOne_Call) RunAndReturn(run func(interface{}, int
 }
 
 // Watch provides a mock function with given fields: pipeline
-func (_m *DbInterfaceMock) Watch(pipeline interface{}) (*mongo.ChangeStream, error) {
+func (_m *DbInterfaceMock) Watch(pipeline interface{}) (ChangeStreamInterface, error) {
 	ret := _m.Called(pipeline)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Watch")
 	}
 
-	var r0 *mongo.ChangeStream
+	var r0 ChangeStreamInterface
 	var r1 error
-	if rf, ok := ret.Get(0).(func(interface{}) (*mongo.ChangeStream, error)); ok {
+	if rf, ok := ret.Get(0).(func(interface{}) (ChangeStreamInterface, error)); ok {
 		return rf(pipeline)
 	}
-	if rf, ok := ret.Get(0).(func(interface{}) *mongo.ChangeStream); ok {
+	if rf, ok := ret.Get(0).(func(interface{}) ChangeStreamInterface); ok {
 		r0 = rf(pipeline)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*mongo.ChangeStream)
+			r0 = ret.Get(0).(ChangeStreamInterface)
 		}
 	}
 
@@ -383,12 +383,12 @@ func (_c *DbInterfaceMock_Watch_Call) Run(run func(pipeline interface{})) *DbInt
 	return _c
 }
 
-func (_c *DbInterfaceMock_Watch_Call) Return(_a0 *mongo.ChangeStream, _a1 error) *DbInterfaceMock_Watch_Call {
+func (_c *DbInterfaceMock_Watch_Call) Return(_a0 ChangeStreamInterface, _a1 error) *DbInterfaceMock_Watch_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *DbInterfaceMock_Watch_Call) RunAndReturn(run func(interface{}) (*mongo.ChangeStream, error)) *DbInterfaceMock_Watch_Call {
+func (_c *DbInterfaceMock_Watch_Call) RunAndReturn(run func(interface{}) (ChangeStreamInterface, error)) *DbInterfaceMock_Watch_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -42,6 +42,10 @@ type Task struct {
 	Meta     Meta
 }
 
+type event struct {
+	Task Task `bson:"fullDocument"`
+}
+
 func NewQueue(db DbInterface) *Queue {
 	queue := Queue{
 		db: db,
@@ -92,7 +96,7 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 		"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
 	},
 		bson.M{
-			"$set": bson.M{"state": StateRunning, "meta.dispatched": time.Now()},
+			"$set": bson.M{"state": StateRunning, "meta.dispatched": nowFunc()},
 			"$inc": bson.M{"tries": 1},
 		},
 		options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}),
@@ -140,36 +144,36 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 	}
 
 	for stream.Next(q.db.Context()) {
-		var event struct {
-			Task Task `bson:"fullDocument"`
-		}
+		var evt event
 
-		if err := stream.Decode(&event); err != nil {
+		if err := stream.Decode(&evt); err != nil {
 			continue
 		}
+
+		task := evt.Task
 
 		// already processed
-		if event.Task.Meta.Created.Before(processedUntil) {
+		if task.Meta.Created.Before(processedUntil) {
 			continue
 		}
 
-		event.Task.State = StateRunning
-		now := time.Now()
-		event.Task.Meta.Dispatched = &now
+		task.State = StateRunning
+		now := nowFunc()
+		task.Meta.Dispatched = &now
 
 		err := q.db.UpdateOne(
-			bson.M{"_id": event.Task.Id},
+			bson.M{"_id": task.Id},
 			bson.M{"$set": bson.M{
-				"state":           event.Task.State,
-				"meta.dispatched": event.Task.Meta.Dispatched,
+				"state":           task.State,
+				"meta.dispatched": task.Meta.Dispatched,
 			}})
 
 		if err != nil {
-			_ = q.Err(event.Task.Id.Hex(), err)
+			_ = q.Err(task.Id.Hex(), err)
 			continue
 		}
 
-		cb(event.Task)
+		cb(task)
 	}
 
 	return nil
@@ -199,7 +203,7 @@ func (q *Queue) Err(id string, err error) error {
 		bson.M{"_id": oId},
 		bson.M{"$set": bson.M{
 			"state":          StateError,
-			"meta.completed": time.Now(),
+			"meta.completed": nowFunc(),
 			"message":        err.Error()},
 		})
 }
