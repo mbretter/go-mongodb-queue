@@ -189,14 +189,14 @@ func (q *Queue) Ack(id string) error {
 		bson.M{"_id": oId},
 		bson.M{"$set": bson.M{
 			"state":          StateCompleted,
-			"meta.completed": time.Now(),
+			"meta.completed": nowFunc(),
 		}})
 }
 
 func (q *Queue) Err(id string, err error) error {
 	oId, e := primitive.ObjectIDFromHex(id)
 	if e != nil {
-		return err
+		return e
 	}
 
 	return q.db.UpdateOne(

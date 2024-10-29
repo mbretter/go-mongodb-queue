@@ -316,3 +316,102 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 		})
 	}
 }
+
+func TestQueue_Ack(t *testing.T) {
+	setNowFunc(func() time.Time {
+		t, _ := time.Parse(time.DateTime, "2024-10-12 15:04:05")
+		return t
+	})
+
+	tests := []struct {
+		name   string
+		taskId string
+		error  error
+	}{
+		{
+			name:   "Success",
+			taskId: "67211cb175b7564a5cd9ce3f",
+		},
+		{
+			name:   "InvalidObjectId",
+			taskId: "xxx",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := NewDbInterfaceMock(t)
+
+			q := NewQueue(dbMock)
+
+			oId, err := primitive.ObjectIDFromHex(tt.taskId)
+
+			if err == nil {
+				dbMock.EXPECT().UpdateOne(
+					bson.M{"_id": oId},
+					bson.M{"$set": bson.M{
+						"state":          StateCompleted,
+						"meta.completed": nowFunc(),
+					}}).Return(tt.error)
+			}
+
+			err = q.Ack(tt.taskId)
+
+			if tt.name == "InvalidObjectId" {
+				assert.Equal(t, "the provided hex string is not a valid ObjectID", err.Error())
+			} else {
+				assert.Equal(t, tt.error, err)
+			}
+		})
+	}
+}
+
+func TestQueue_Err(t *testing.T) {
+	setNowFunc(func() time.Time {
+		t, _ := time.Parse(time.DateTime, "2024-10-12 15:04:05")
+		return t
+	})
+
+	tests := []struct {
+		name   string
+		taskId string
+		error  error
+	}{
+		{
+			name:   "Success",
+			taskId: "67211cb175b7564a5cd9ce3f",
+		},
+		{
+			name:   "InvalidObjectId",
+			taskId: "xxx",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := NewDbInterfaceMock(t)
+
+			q := NewQueue(dbMock)
+
+			oId, err := primitive.ObjectIDFromHex(tt.taskId)
+
+			if err == nil {
+				dbMock.EXPECT().UpdateOne(
+					bson.M{"_id": oId},
+					bson.M{"$set": bson.M{
+						"state":          StateError,
+						"meta.completed": nowFunc(),
+						"message":        "some error",
+					}}).Return(tt.error)
+			}
+
+			err = q.Err(tt.taskId, errors.New("some error"))
+
+			if tt.name == "InvalidObjectId" {
+				assert.Equal(t, "the provided hex string is not a valid ObjectID", err.Error())
+			} else {
+				assert.Equal(t, tt.error, err)
+			}
+		})
+	}
+}
