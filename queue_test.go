@@ -491,8 +491,41 @@ func TestQueue_Selftest(t *testing.T) {
 			} else if tt.error2 != nil {
 				assert.Equal(t, tt.error2, err)
 			} else {
-				assert.Equal(t, nil, err)
+				assert.Nil(t, err)
 			}
+		})
+	}
+}
+
+func TestQueue_CreateIndexes(t *testing.T) {
+
+	tests := []struct {
+		name  string
+		error error
+	}{
+		{
+			name: "Success",
+		},
+		{
+			name:  "Error",
+			error: errors.New("CreateIndexes failed"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := NewDbInterfaceMock(t)
+
+			q := NewQueue(dbMock)
+
+			dbMock.EXPECT().CreateIndexes([]mongo.IndexModel{{
+				Keys: bson.D{{"topic", 1}, {"state", 1}},
+			}, {
+				Keys: bson.D{{"meta.completed", 1}}, Options: options.Index().SetExpireAfterSeconds(3600),
+			}}).Return(tt.error)
+
+			err := q.CreateIndexes()
+			assert.Equal(t, err, tt.error)
 		})
 	}
 }
