@@ -208,18 +208,18 @@ func (q *Queue) Err(id string, err error) error {
 		})
 }
 
-func (q *Queue) Selfcare(topic *string) error {
+func (q *Queue) Selfcare(topic string) error {
 	// re-schedule long-running tasks
 	// this only happens if the processor could not ack the task, i.e. the application crashed
 	query := bson.M{
 		"state":           StateRunning,
-		"meta.dispatched": bson.M{"$lt": time.Now().Add(DefaultTimeout)},
+		"meta.dispatched": bson.M{"$lt": nowFunc().Add(DefaultTimeout)},
 	}
-	if topic != nil {
-		query["topic"] = *topic
+	if len(topic) > 0 {
+		query["topic"] = topic
 	}
 
-	_ = q.db.UpdateMany(
+	err1 := q.db.UpdateMany(
 		query,
 		bson.M{"$set": bson.M{
 			"state":           StatePending,
@@ -231,16 +231,24 @@ func (q *Queue) Selfcare(topic *string) error {
 		"state": StatePending,
 		"$expr": bson.M{"$gte": bson.A{"$tries", "$maxtries"}},
 	}
-	if topic != nil {
-		query["topic"] = *topic
+	if len(topic) > 0 {
+		query["topic"] = topic
 	}
 
-	_ = q.db.UpdateMany(
+	err2 := q.db.UpdateMany(
 		query,
 		bson.M{"$set": bson.M{
 			"state":          StateError,
-			"meta.completed": time.Now()},
+			"meta.completed": nowFunc()},
 		})
+
+	if err1 != nil {
+		return err1
+	}
+
+	if err2 != nil {
+		return err2
+	}
 
 	return nil
 }

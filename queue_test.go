@@ -415,3 +415,84 @@ func TestQueue_Err(t *testing.T) {
 		})
 	}
 }
+
+func TestQueue_Selftest(t *testing.T) {
+	setNowFunc(func() time.Time {
+		t, _ := time.Parse(time.DateTime, "2024-11-04 15:04:05")
+		return t
+	})
+
+	tests := []struct {
+		name   string
+		topic  string
+		error1 error
+		error2 error
+	}{
+		{
+			name:  "Success",
+			topic: "",
+		},
+		{
+			name:  "Success with topic",
+			topic: "user.delete",
+		},
+		{
+			name:   "Reschedule failed",
+			topic:  "",
+			error1: errors.New("FindOneAndUpdate1"),
+		},
+		{
+			name:   "Set maxtries to error failed",
+			topic:  "",
+			error2: errors.New("FindOneAndUpdate2"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := NewDbInterfaceMock(t)
+
+			q := NewQueue(dbMock)
+
+			query1 := bson.M{
+				"state":           StateRunning,
+				"meta.dispatched": bson.M{"$lt": nowFunc().Add(DefaultTimeout)},
+			}
+
+			if tt.topic != "" {
+				query1["topic"] = tt.topic
+			}
+
+			dbMock.EXPECT().UpdateMany(query1,
+				bson.M{"$set": bson.M{
+					"state":           StatePending,
+					"meta.dispatched": nil},
+				}).Return(tt.error1)
+
+			query2 := bson.M{
+				"state": StatePending,
+				"$expr": bson.M{"$gte": bson.A{"$tries", "$maxtries"}},
+			}
+
+			if tt.topic != "" {
+				query2["topic"] = tt.topic
+			}
+
+			dbMock.EXPECT().UpdateMany(query2,
+				bson.M{"$set": bson.M{
+					"state":          StateError,
+					"meta.completed": nowFunc()},
+				}).Return(tt.error2)
+
+			err := q.Selfcare(tt.topic)
+
+			if tt.error1 != nil {
+				assert.Equal(t, tt.error1, err)
+			} else if tt.error2 != nil {
+				assert.Equal(t, tt.error2, err)
+			} else {
+				assert.Equal(t, nil, err)
+			}
+		})
+	}
+}
