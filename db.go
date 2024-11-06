@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -24,12 +25,21 @@ type ChangeStreamInterface interface {
 	Close(ctx context.Context) error
 }
 
-type StdDb struct {
-	context    context.Context
-	collection *mongo.Collection
+type CollectionInterface interface {
+	InsertOne(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error)
+	FindOneAndUpdate(ctx context.Context, filter interface{}, update interface{}, opts ...*options.FindOneAndUpdateOptions) *mongo.SingleResult
+	UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error)
+	UpdateMany(ctx context.Context, filter interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error)
+	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (*mongo.ChangeStream, error)
+	Indexes() mongo.IndexView
 }
 
-func NewStdDb(collection *mongo.Collection, ctx context.Context) *StdDb {
+type StdDb struct {
+	context    context.Context
+	collection CollectionInterface
+}
+
+func NewStdDb(collection CollectionInterface, ctx context.Context) *StdDb {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -55,7 +65,7 @@ func (d *StdDb) FindOneAndUpdate(filter interface{}, update interface{}, opts ..
 	opts = append(opts, options.FindOneAndUpdate().SetReturnDocument(options.After))
 	res := d.collection.FindOneAndUpdate(d.context, filter, update, opts...)
 	if res == nil {
-		return mongo.NewSingleResultFromDocument(nil, errors.New("no result returned"), nil)
+		return mongo.NewSingleResultFromDocument(bson.M{}, errors.New("no result returned"), nil)
 	}
 	return res
 }
