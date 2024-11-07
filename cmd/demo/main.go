@@ -107,7 +107,7 @@ func main() {
 	}
 
 	if *selfcare {
-		err := qu.Selfcare("")
+		err := qu.Selfcare("", 0)
 		if err != nil {
 			log.Fatal(err)
 		}

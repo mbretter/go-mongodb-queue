@@ -46,6 +46,7 @@ type event struct {
 	Task Task `bson:"fullDocument"`
 }
 
+// NewQueue initializes a new Queue instance with the provided DbInterface.
 func NewQueue(db DbInterface) *Queue {
 	queue := Queue{
 		db: db,
@@ -60,6 +61,8 @@ func setNowFunc(n func() time.Time) {
 	nowFunc = n
 }
 
+// Publish inserts a new task into the queue with the given topic, payload, and maxTries.
+// If maxTries is zero, it defaults to DefaultMaxTries.
 func (q *Queue) Publish(topic string, payload any, maxTries uint) (*Task, error) {
 	if maxTries == 0 {
 		maxTries = DefaultMaxTries
@@ -208,12 +211,17 @@ func (q *Queue) Err(id string, err error) error {
 		})
 }
 
-func (q *Queue) Selfcare(topic string) error {
+func (q *Queue) Selfcare(topic string, timeout time.Duration) error {
 	// re-schedule long-running tasks
 	// this only happens if the processor could not ack the task, i.e. the application crashed
+
+	if timeout == 0 {
+		timeout = DefaultTimeout
+	}
+
 	query := bson.M{
 		"state":           StateRunning,
-		"meta.dispatched": bson.M{"$lt": nowFunc().Add(DefaultTimeout)},
+		"meta.dispatched": bson.M{"$lt": nowFunc().Add(timeout)},
 	}
 	if len(topic) > 0 {
 		query["topic"] = topic

@@ -484,7 +484,7 @@ func TestQueue_Selftest(t *testing.T) {
 					"meta.completed": nowFunc()},
 				}).Return(tt.error2)
 
-			err := q.Selfcare(tt.topic)
+			err := q.Selfcare(tt.topic, 0)
 
 			if tt.error1 != nil {
 				assert.Equal(t, tt.error1, err)
