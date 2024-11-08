@@ -16,7 +16,7 @@ dependencies, and with direct integration into your application.
 ## Install
 
 ```
-go get mbretter/go-mongodb-queue
+go get github.com/mbretter/go-mongodb-queue
 ```
 
 import
@@ -114,7 +114,7 @@ if err != nil {
 wg.Wait()
 ```
 
-On startup, the `Subscribe` functions checks for unprocessed tasks scheduled before we subscribed, because existing 
+On startup, the `Subscribe` function checks for unprocessed tasks scheduled before we subscribed, because existing 
 tasks will not be covered by the MongoDB change-stream.
 
 ## Ack/Err
