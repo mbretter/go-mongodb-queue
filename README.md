@@ -13,6 +13,8 @@ polling too.
 The motivation was to build an easy-to-integrate queuing system without sophisticated features, without external 
 dependencies, and with direct integration into your application.
 
+:warning: There is no stable release yet, API is changing 
+
 ## Install
 
 ```
@@ -34,11 +36,9 @@ Along the task, any arbitrary data can be stored.
 
 Each task belongs to a topic, when publishing to a topic, the handler of this topic gets the first unprocessed task.
 
-When using the event based `Subscribe` function, only one handler/consumer for one topic should be used at the same time, 
-for avoiding race conditions.
+You can use either the event based `Subscribe` function, or the `GetNext` function which is needed for polling.
+It both cases it is totally safe to have multiple consumers running on the same topic.
 
-If you need to run multiple handlers/consumers on the same topic, you have to use the `GetNext` function, which supports 
-polling only.
 
 ```go
 ctx := context.TODO()
@@ -77,7 +77,7 @@ payload := Payload{
     Num:  73,
 }
 
-task, err := qu.Publish("some.topic", &payload, queue.DefaultMaxTries)
+task, err := qu.Publish("some.topic", &payload)
 if err != nil {
     log.Fatal(err)
 }
@@ -85,8 +85,9 @@ if err != nil {
 
 ## Subscribe
 
-Any handler/application can subscribe to a certain topic. However, there can only be one handler for a certain topic 
-otherwise, you will run into race conditions.
+Any handler/application can subscribe to a certain topic, the callback function receives a copy of the task.
+
+After processing the task you have to `Ack` it, or mark it as `Err`.
 
 Here is a small snippet which demonstrates the usage of subscribe using goroutines.
 ```go
@@ -153,12 +154,23 @@ for {
 }
 ```
 
+## Reschedule
+
+If a task had an error, and you want to process this task again, you can use `Reschedule`.
+
+```go
+newTask, err := Reschedule(task)
+```
+
+When rescheduling, the original task remains untouched, there will create a new task with the same payload and the 
+initial tries value will be increased. 
+
 ## Selfcare
 
 The selfcare function re-schedules long-running tasks, this might happen, if the application could not acknowledge 
 the task, and it sets the task to the error state, if the maximum number of tries have been exceeded.
 
-The selfcare function might be run per topic, if no topic was given, the selfcare runs over all tasks.
+The selfcare function might be run per topic, if no topic was given, the selfcare runs over all topics.
 As second argument, the timeout for long-running tasks can be given, if no timeout was given it defaults to 5 minutes.
 
 ## CreateIndexes

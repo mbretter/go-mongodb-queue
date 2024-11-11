@@ -58,7 +58,8 @@ func TestQueue_Publish(t *testing.T) {
 			}
 			dbMock.EXPECT().InsertOne(taskExpected).Return(oId, tt.error)
 
-			task, err := q.Publish(tt.topic, tt.payload, tt.maxTries)
+			opts := NewPublishOptions().SetMaxTries(tt.maxTries)
+			task, err := q.Publish(tt.topic, tt.payload, opts)
 
 			if tt.error == nil {
 				taskExpected.Id = oId
@@ -183,7 +184,7 @@ func TestQueue_Subscribe(t *testing.T) {
 			}, bson.M{
 				"$set": bson.M{"state": StateRunning, "meta.dispatched": now},
 				"$inc": bson.M{"tries": 1},
-			}, options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}})).Return(res)
+			}, options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}).SetReturnDocument(options.After)).Return(res)
 
 			if tt.task != nil {
 				changeStream.EXPECT().Next(context.TODO()).Once().Return(true)
@@ -202,11 +203,18 @@ func TestQueue_Subscribe(t *testing.T) {
 					goto runTest
 				}
 
-				dbMock.EXPECT().UpdateOne(bson.M{"_id": tt.task.Id},
-					bson.M{"$set": bson.M{
-						"state":           StateRunning,
-						"meta.dispatched": &now,
-					}}).Return(tt.updateError)
+				retTask := *tt.task
+				retTask.State = StateRunning
+				res = mongo.NewSingleResultFromDocument(retTask, tt.updateError, nil)
+
+				dbMock.EXPECT().FindOneAndUpdate(bson.M{
+					"_id":   tt.task.Id,
+					"state": StatePending,
+					"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
+				}, bson.M{
+					"$set": bson.M{"state": StateRunning, "meta.dispatched": now},
+					"$inc": bson.M{"tries": 1},
+				}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Return(res)
 
 				if tt.updateError != nil {
 					dbMock.EXPECT().UpdateOne(
@@ -300,7 +308,7 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 				"$inc": bson.M{"tries": 1},
 			}
 
-			opts := options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}})
+			opts := options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}).SetReturnDocument(options.After)
 			dbMock.EXPECT().FindOneAndUpdate(filter, update, opts).Once().Return(res)
 
 			if tt.error == nil {

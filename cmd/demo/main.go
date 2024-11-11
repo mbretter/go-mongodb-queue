@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
+	"os"
 	"sync"
 )
 
@@ -18,8 +19,6 @@ type Payload struct {
 }
 
 func main() {
-	var mongodbUri = flag.String("u", "", "mongodb url")
-	var dbName = flag.String("d", "", "mongodb database name")
 	var collName = flag.String("c", "queue", "mongodb collection name")
 	var publish = flag.String("p", "", "publish topic")
 	var getnext = flag.String("g", "", "next topic")
@@ -29,23 +28,25 @@ func main() {
 	var subscribe = flag.String("s", "", "subscribe on topic")
 	flag.Parse()
 
-	if len(*mongodbUri) == 0 {
+	mongodbUri := os.Getenv("MONGODB_URI")
+	dbName := os.Getenv("MONGODB_DB")
+	if len(mongodbUri) == 0 {
 		log.Fatal("mongodb uri missing")
 	}
 
-	if len(*dbName) == 0 {
+	if len(dbName) == 0 {
 		log.Fatal("mongodb database name missing")
 	}
 
 	ctx := context.TODO()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(*mongodbUri))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodbUri))
 	if err != nil {
 		log.Fatal(err)
 	}
 	//goland:noinspection ALL
 	defer client.Disconnect(ctx)
 
-	collection := client.Database(*dbName).Collection(*collName)
+	collection := client.Database(dbName).Collection(*collName)
 
 	queueDb := queue.NewStdDb(collection, ctx)
 	qu := queue.NewQueue(queueDb)
@@ -80,7 +81,8 @@ func main() {
 	}
 
 	if *publish != "" {
-		task, err := qu.Publish(*publish, &payload, queue.DefaultMaxTries)
+		opts := queue.NewPublishOptions().SetMaxTries(1)
+		task, err := qu.Publish(*publish, &payload, opts)
 		if err != nil {
 			log.Fatal(err)
 		}

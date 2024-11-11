@@ -61,18 +61,55 @@ func setNowFunc(n func() time.Time) {
 	nowFunc = n
 }
 
+type PublishOptions struct {
+	MaxTries uint
+	Tries    int
+}
+
+func NewPublishOptions() *PublishOptions {
+	return &PublishOptions{
+		MaxTries: 0,
+		Tries:    -1,
+	}
+}
+
+func (p *PublishOptions) SetMaxTries(maxTries uint) *PublishOptions {
+	p.MaxTries = maxTries
+	return p
+}
+
+func (p *PublishOptions) setTries(tries uint) *PublishOptions {
+	p.Tries = int(tries)
+	return p
+}
+
 // Publish inserts a new task into the queue with the given topic, payload, and maxTries.
 // If maxTries is zero, it defaults to DefaultMaxTries.
-func (q *Queue) Publish(topic string, payload any, maxTries uint) (*Task, error) {
-	if maxTries == 0 {
-		maxTries = DefaultMaxTries
+func (q *Queue) Publish(topic string, payload any, opts ...*PublishOptions) (*Task, error) {
+
+	o := PublishOptions{
+		MaxTries: DefaultMaxTries,
+		Tries:    0,
+	}
+
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		if opt.MaxTries > 0 {
+			o.MaxTries = opt.MaxTries
+		}
+
+		if opt.Tries >= 0 {
+			o.Tries = opt.Tries
+		}
 	}
 
 	t := Task{
 		Topic:    topic,
 		Payload:  payload,
-		Tries:    0,
-		MaxTries: maxTries,
+		Tries:    uint(o.Tries),
+		MaxTries: o.MaxTries,
 		Meta: Meta{
 			Created:    nowFunc(),
 			Dispatched: nil,
@@ -102,7 +139,7 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 			"$set": bson.M{"state": StateRunning, "meta.dispatched": nowFunc()},
 			"$inc": bson.M{"tries": 1},
 		},
-		options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}),
+		options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}).SetReturnDocument(options.After),
 	)
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -116,11 +153,42 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 	return &t, nil
 }
 
+func (q *Queue) GetNextById(id primitive.ObjectID) (*Task, error) {
+	t := Task{}
+	res := q.db.FindOneAndUpdate(bson.M{
+		"_id":   id,
+		"state": StatePending,
+		"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
+	},
+		bson.M{
+			"$set": bson.M{"state": StateRunning, "meta.dispatched": nowFunc()},
+			"$inc": bson.M{"tries": 1},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	)
+
+	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+
+	if err := res.Decode(&t); err != nil {
+		return nil, err
+	}
+
+	return &t, nil
+}
+
+func (q *Queue) Reschedule(task *Task) (*Task, error) {
+	return q.Publish(task.Topic, task.Payload, NewPublishOptions().setTries(task.Tries).SetMaxTries(task.MaxTries))
+}
+
 type Callback func(t Task)
 
 func (q *Queue) Subscribe(topic string, cb Callback) error {
-	pipeline := bson.D{
-		{"$match", bson.D{{"operationType", "insert"}, {"fullDocument.topic", topic}, {"fullDocument.state", StatePending}}},
+	pipeline := bson.D{{"$match", bson.D{
+		{"operationType", "insert"},
+		{"fullDocument.topic", topic},
+		{"fullDocument.state", StatePending}}},
 	}
 
 	stream, err := q.db.Watch(mongo.Pipeline{pipeline})
@@ -153,30 +221,20 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 			continue
 		}
 
-		task := evt.Task
-
 		// already processed
-		if task.Meta.Created.Before(processedUntil) {
+		if evt.Task.Meta.Created.Before(processedUntil) {
 			continue
 		}
 
-		task.State = StateRunning
-		now := nowFunc()
-		task.Meta.Dispatched = &now
-
-		err := q.db.UpdateOne(
-			bson.M{"_id": task.Id},
-			bson.M{"$set": bson.M{
-				"state":           task.State,
-				"meta.dispatched": task.Meta.Dispatched,
-			}})
-
+		task, err := q.GetNextById(evt.Task.Id)
 		if err != nil {
-			_ = q.Err(task.Id.Hex(), err)
+			_ = q.Err(evt.Task.Id.Hex(), err)
 			continue
 		}
 
-		cb(task)
+		if task != nil {
+			cb(*task)
+		}
 	}
 
 	return nil
