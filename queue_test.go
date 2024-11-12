@@ -59,7 +59,7 @@ func TestQueue_Publish(t *testing.T) {
 			dbMock.EXPECT().InsertOne(taskExpected).Return(oId, tt.error)
 
 			opts := NewPublishOptions().SetMaxTries(tt.maxTries)
-			task, err := q.Publish(tt.topic, tt.payload, opts)
+			task, err := q.Publish(tt.topic, tt.payload, opts, nil)
 
 			if tt.error == nil {
 				taskExpected.Id = oId
@@ -325,6 +325,84 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 	}
 }
 
+func TestQueue_GetNextById(t *testing.T) {
+	setNowFunc(func() time.Time {
+		t, _ := time.Parse(time.DateTime, "2024-10-12 15:04:05")
+		return t
+	})
+
+	now := nowFunc()
+
+	tests := []struct {
+		name  string
+		task  Task
+		error error
+	}{
+		{
+			name: "Success",
+			task: Task{
+				Id:       primitive.NewObjectID(),
+				Topic:    "topic1",
+				Payload:  "payload1",
+				Tries:    1,
+				MaxTries: 3,
+				Meta: Meta{
+					Created: now,
+				},
+				State: StateRunning,
+			},
+		},
+		{
+			name: "Error",
+			task: Task{
+				Id: primitive.NewObjectID(),
+			},
+			error: errors.New("no doc found"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := NewDbInterfaceMock(t)
+			q := NewQueue(dbMock)
+
+			resOk := mongo.NewSingleResultFromDocument(tt.task, tt.error, nil)
+			resNoDoc := mongo.NewSingleResultFromDocument(tt.task, mongo.ErrNoDocuments, nil)
+
+			var res *mongo.SingleResult
+			if tt.error == nil {
+				res = resOk
+			} else {
+				res = resNoDoc
+			}
+
+			filter := bson.M{
+				"_id":   tt.task.Id,
+				"state": StatePending,
+				"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
+			}
+
+			update := bson.M{
+				"$set": bson.M{"state": StateRunning, "meta.dispatched": now},
+				"$inc": bson.M{"tries": 1},
+			}
+
+			opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+			dbMock.EXPECT().FindOneAndUpdate(filter, update, opts).Once().Return(res)
+
+			ts, err := q.GetNextById(tt.task.Id)
+
+			if tt.error == nil {
+				assert.Equal(t, tt.task.Topic, ts.Topic)
+				assert.Equal(t, tt.error, err)
+			} else {
+				assert.Nil(t, ts)
+				assert.Nil(t, err)
+			}
+
+		})
+	}
+}
+
 func TestQueue_Ack(t *testing.T) {
 	setNowFunc(func() time.Time {
 		t, _ := time.Parse(time.DateTime, "2024-10-12 15:04:05")
@@ -506,7 +584,6 @@ func TestQueue_Selftest(t *testing.T) {
 }
 
 func TestQueue_CreateIndexes(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		error error
@@ -534,6 +611,64 @@ func TestQueue_CreateIndexes(t *testing.T) {
 
 			err := q.CreateIndexes()
 			assert.Equal(t, err, tt.error)
+		})
+	}
+}
+
+func TestQueue_Reschedule(t *testing.T) {
+	setNowFunc(func() time.Time {
+		t, _ := time.Parse(time.DateTime, "2023-11-12 15:04:05")
+		return t
+	})
+
+	tests := []struct {
+		name  string
+		task  Task
+		error error
+	}{
+		{
+			name: "Success",
+			task: Task{
+				Topic:    "foo.bar",
+				Payload:  "whatever",
+				Tries:    1,
+				MaxTries: 3,
+				Meta: Meta{
+					Created: nowFunc(),
+				},
+				State: StatePending,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := NewDbInterfaceMock(t)
+			q := NewQueue(dbMock)
+
+			oId := primitive.NewObjectID()
+
+			taskExpected := Task{
+				Topic:    tt.task.Topic,
+				Payload:  tt.task.Payload,
+				Tries:    1,
+				MaxTries: 3,
+				Meta: Meta{
+					Created: nowFunc(),
+				},
+				State: StatePending,
+			}
+			dbMock.EXPECT().InsertOne(taskExpected).Return(oId, tt.error)
+
+			task, err := q.Reschedule(&tt.task)
+
+			if tt.error == nil {
+				taskExpected.Id = oId
+				assert.Equal(t, taskExpected, *task)
+			} else {
+				assert.Nil(t, task)
+				assert.Equal(t, tt.error, err)
+			}
+
 		})
 	}
 }
