@@ -13,8 +13,6 @@ polling too.
 The motivation was to build an easy-to-integrate queuing system without sophisticated features, without external 
 dependencies, and with direct integration into your application.
 
-:warning: There is no stable release yet, API is changing 
-
 ## Install
 
 ```
