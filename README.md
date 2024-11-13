@@ -178,3 +178,60 @@ As second argument, the timeout for long-running tasks can be given, if no timeo
 On first use, you have to call this function, or set the indexes manually on the queue collection.
 There will be created two indexes, one on `topic` and `state`, the other one is a TTL-index, which removes completed 
 tasks after one hour. 
+
+## mongodb docker-compose
+
+This is a config sample for bringing up a MongoDB-replicaset for testing, you have to use fixed ip-addresses for your containers, 
+otherwise you will get connection problems, because they are sent back to the client, when connecting. 
+
+```yaml
+services:
+  mongo1:
+    hostname: mongo1
+    image: mongo:8
+    ports:
+      - 27027:27017
+    restart: always
+    volumes:
+      - /data/mongodb-rs1:/data/db
+    command: mongod --replSet rs0
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.3
+  mongo2:
+    hostname: mongo2
+    image: mongo:8
+    ports:
+      - 27028:27017
+    restart: always
+    volumes:
+      - /data/mongodb-rs2:/data/db
+    command: mongod --replSet rs0
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.4
+  mongo3:
+    hostname: mongo3
+    image: mongo:8
+    ports:
+      - 27029:27017
+    restart: always
+    volumes:
+      - /data/mongodb-rs3:/data/db
+    command: mongod --replSet rs0
+    networks:
+      customnetwork:
+        ipv4_address: 172.20.0.5
+
+networks:
+  customnetwork:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+```
+
+After bringing up the containers the first time, you have to initialize the replicaset:
+```shell
+docker compose exec mongo1 mongosh
+> rs.initiate({ _id: "rs0", members: [ { _id: 0, host: "172.20.0.3:27017" }, { _id: 1, host: "172.20.0.4:27017" }, { _id: 2, host: "172.20.0.5:27017" }] })
+```
