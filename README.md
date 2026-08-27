@@ -13,16 +13,18 @@ polling too.
 The motivation was to build an easy-to-integrate queuing system without sophisticated features, without external 
 dependencies, and with direct integration into your application.
 
+Version 2 uses mongo-driver/v2.
+
 ## Install
 
 ```
-go get github.com/mbretter/go-mongodb-queue
+go get github.com/mbretter/go-mongodb-queue/v2
 ```
 
 import
 
 ```go
-import queue "github.com/mbretter/go-mongodb-queue"
+import queue "github.com/mbretter/go-mongodb-queue/v2"
 ```
 
 ## Features
