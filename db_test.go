@@ -3,12 +3,13 @@ package queue
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func TestDb_NewStd(t *testing.T) {
@@ -62,7 +63,7 @@ func TestDb_InsertOne(t *testing.T) {
 
 			doc := bson.M{"foo": "bar"}
 			res := mongo.InsertOneResult{
-				InsertedID: primitive.NewObjectID(),
+				InsertedID: bson.NewObjectID(),
 			}
 			collectionMock.EXPECT().InsertOne(db.context, doc).Return(&res, tt.error)
 
@@ -72,7 +73,7 @@ func TestDb_InsertOne(t *testing.T) {
 			if tt.error == nil {
 				assert.Equal(t, oId, res.InsertedID)
 			} else {
-				assert.Equal(t, oId, primitive.NilObjectID)
+				assert.Equal(t, oId, bson.NilObjectID)
 			}
 
 		})
@@ -100,8 +101,19 @@ func TestDb_FindOneAndUpdate(t *testing.T) {
 			filter := bson.M{"foo": "bar"}
 			upd := bson.M{"status": "active"}
 
-			opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-			collectionMock.EXPECT().FindOneAndUpdate(db.context, filter, upd, opts).Return(tt.res)
+			collectionMock.EXPECT().FindOneAndUpdate(db.context, filter, upd, mock.MatchedBy(func(opts *options.FindOneAndUpdateOptionsBuilder) bool {
+				if opts == nil {
+					return false
+				}
+
+				resolvedOpts := &options.FindOneAndUpdateOptions{}
+				for _, f := range opts.Opts {
+					if err := f(resolvedOpts); err != nil {
+						return false
+					}
+				}
+				return resolvedOpts.ReturnDocument != nil && *resolvedOpts.ReturnDocument == options.After
+			})).Return(tt.res)
 
 			res := db.FindOneAndUpdate(filter, upd)
 
@@ -190,7 +202,7 @@ func TestDb_Watch(t *testing.T) {
 			collectionMock := NewCollectionInterfaceMock(t)
 			db := NewStdDb(collectionMock, nil)
 
-			pipeline := mongo.Pipeline{bson.D{{"$match", bson.M{"foo": "bar"}}}}
+			pipeline := mongo.Pipeline{bson.D{{Key: "$match", Value: bson.M{"foo": "bar"}}}}
 
 			changeStream := mongo.ChangeStream{}
 

@@ -4,12 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	queue "github.com/mbretter/go-mongodb-queue"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"os"
 	"sync"
+
+	queue "github.com/mbretter/go-mongodb-queue/v2"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type Payload struct {
@@ -19,6 +20,7 @@ type Payload struct {
 }
 
 func main() {
+	os.Chdir("../..")
 	var collName = flag.String("c", "queue", "mongodb collection name")
 	var publish = flag.String("p", "", "publish topic")
 	var getnext = flag.String("g", "", "next topic")
@@ -39,7 +41,7 @@ func main() {
 	}
 
 	ctx := context.TODO()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongodbUri))
+	client, err := mongo.Connect(options.Client().ApplyURI(mongodbUri))
 	if err != nil {
 		log.Fatal(err)
 	}

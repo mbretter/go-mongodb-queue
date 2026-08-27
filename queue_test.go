@@ -3,13 +3,15 @@ package queue
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	mock "github.com/stretchr/testify/mock"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func TestQueue_Publish(t *testing.T) {
@@ -44,7 +46,7 @@ func TestQueue_Publish(t *testing.T) {
 			dbMock := NewDbInterfaceMock(t)
 			q := NewQueue(dbMock)
 
-			oId := primitive.NewObjectID()
+			oId := bson.NewObjectID()
 
 			taskExpected := Task{
 				Topic:    tt.topic,
@@ -93,7 +95,7 @@ func TestQueue_Subscribe(t *testing.T) {
 			name:  "Success",
 			topic: "topic1",
 			task: &Task{
-				Id:       primitive.NewObjectID(),
+				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
 				Tries:    1,
@@ -113,7 +115,7 @@ func TestQueue_Subscribe(t *testing.T) {
 			name:  "EventDecodeError",
 			topic: "topic1",
 			task: &Task{
-				Id:       primitive.NewObjectID(),
+				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
 				Tries:    1,
@@ -129,7 +131,7 @@ func TestQueue_Subscribe(t *testing.T) {
 			name:  "AlreadyProcessed",
 			topic: "topic1",
 			task: &Task{
-				Id:       primitive.NewObjectID(),
+				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
 				Tries:    1,
@@ -144,7 +146,7 @@ func TestQueue_Subscribe(t *testing.T) {
 			name:  "UpdateError",
 			topic: "topic1",
 			task: &Task{
-				Id:       primitive.NewObjectID(),
+				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
 				Tries:    1,
@@ -163,7 +165,11 @@ func TestQueue_Subscribe(t *testing.T) {
 			q := NewQueue(dbMock)
 
 			pipeline := bson.D{
-				{"$match", bson.D{{"operationType", "insert"}, {"fullDocument.topic", tt.topic}, {"fullDocument.state", StatePending}}},
+				{Key: "$match", Value: bson.D{
+					{Key: "operationType", Value: "insert"},
+					{Key: "fullDocument.topic", Value: tt.topic},
+					{Key: "fullDocument.state", Value: StatePending},
+				}},
 			}
 			changeStream := NewChangeStreamInterfaceMock(t)
 			dbMock.EXPECT().Watch(mongo.Pipeline{pipeline}).Return(changeStream, tt.watchError)
@@ -176,7 +182,7 @@ func TestQueue_Subscribe(t *testing.T) {
 
 			changeStream.EXPECT().Close(context.TODO()).Return(nil)
 			dbMock.EXPECT().Context().Return(context.TODO())
-
+			//options.FindOneAndUpdate().SetSort(bson.M{"meta.scheduled": 1}).SetReturnDocument(options.After))
 			dbMock.EXPECT().FindOneAndUpdate(bson.M{
 				"topic": tt.topic,
 				"state": StatePending,
@@ -184,13 +190,26 @@ func TestQueue_Subscribe(t *testing.T) {
 			}, bson.M{
 				"$set": bson.M{"state": StateRunning, "meta.dispatched": now},
 				"$inc": bson.M{"tries": 1},
-			}, options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}).SetReturnDocument(options.After)).Return(res)
+			}, mock.MatchedBy(func(opts *options.FindOneAndUpdateOptionsBuilder) bool {
+				if opts == nil {
+					return false
+				}
+
+				resolvedOpts := &options.FindOneAndUpdateOptions{}
+				for _, f := range opts.Opts {
+					if err := f(resolvedOpts); err != nil {
+						return false
+					}
+				}
+				return resolvedOpts.ReturnDocument != nil && *resolvedOpts.ReturnDocument == options.After &&
+					resolvedOpts.Sort != nil && reflect.DeepEqual(resolvedOpts.Sort, bson.M{"meta.scheduled": 1})
+			})).Once().Return(res)
 
 			if tt.task != nil {
 				changeStream.EXPECT().Next(context.TODO()).Once().Return(true)
 				changeStream.EXPECT().Next(context.TODO()).Return(false)
 				var evt event
-				changeStream.EXPECT().Decode(&evt).RunAndReturn(func(i interface{}) error {
+				changeStream.EXPECT().Decode(&evt).RunAndReturn(func(i any) error {
 					i.(*event).Task = *tt.task
 					return tt.decodeError
 				})
@@ -214,7 +233,7 @@ func TestQueue_Subscribe(t *testing.T) {
 				}, bson.M{
 					"$set": bson.M{"state": StateRunning, "meta.dispatched": now},
 					"$inc": bson.M{"tries": 1},
-				}, options.FindOneAndUpdate().SetReturnDocument(options.After)).Return(res)
+				}, stdOptsMatcher).Once().Return(res)
 
 				if tt.updateError != nil {
 					dbMock.EXPECT().UpdateOne(
@@ -262,7 +281,7 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 			name:  "Success",
 			topic: "topic1",
 			task: Task{
-				Id:       primitive.NewObjectID(),
+				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
 				Tries:    1,
@@ -286,7 +305,11 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 			q := NewQueue(dbMock)
 
 			pipeline := bson.D{
-				{"$match", bson.D{{"operationType", "insert"}, {"fullDocument.topic", tt.topic}, {"fullDocument.state", StatePending}}},
+				{Key: "$match", Value: bson.D{
+					{Key: "operationType", Value: "insert"},
+					{Key: "fullDocument.topic", Value: tt.topic},
+					{Key: "fullDocument.state", Value: StatePending},
+				}},
 			}
 			changeStream := NewChangeStreamInterfaceMock(t)
 			dbMock.EXPECT().Watch(mongo.Pipeline{pipeline}).Return(changeStream, nil)
@@ -308,11 +331,25 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 				"$inc": bson.M{"tries": 1},
 			}
 
-			opts := options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}).SetReturnDocument(options.After)
-			dbMock.EXPECT().FindOneAndUpdate(filter, update, opts).Once().Return(res)
+			optsMatcher := mock.MatchedBy(func(opts *options.FindOneAndUpdateOptionsBuilder) bool {
+				if opts == nil {
+					return false
+				}
+
+				resolvedOpts := &options.FindOneAndUpdateOptions{}
+				for _, f := range opts.Opts {
+					if err := f(resolvedOpts); err != nil {
+						return false
+					}
+				}
+				return resolvedOpts.ReturnDocument != nil && *resolvedOpts.ReturnDocument == options.After &&
+					resolvedOpts.Sort != nil && reflect.DeepEqual(resolvedOpts.Sort, bson.M{"meta.scheduled": 1})
+			})
+
+			dbMock.EXPECT().FindOneAndUpdate(filter, update, optsMatcher).Once().Return(res)
 
 			if tt.error == nil {
-				dbMock.EXPECT().FindOneAndUpdate(filter, update, opts).Once().Return(resNoDoc)
+				dbMock.EXPECT().FindOneAndUpdate(filter, update, optsMatcher).Once().Return(resNoDoc)
 				changeStream.EXPECT().Next(context.TODO()).Return(false)
 			}
 
@@ -341,7 +378,7 @@ func TestQueue_GetNextById(t *testing.T) {
 		{
 			name: "Success",
 			task: Task{
-				Id:       primitive.NewObjectID(),
+				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
 				Tries:    1,
@@ -355,7 +392,7 @@ func TestQueue_GetNextById(t *testing.T) {
 		{
 			name: "Error",
 			task: Task{
-				Id: primitive.NewObjectID(),
+				Id: bson.NewObjectID(),
 			},
 			error: errors.New("no doc found"),
 		},
@@ -386,8 +423,7 @@ func TestQueue_GetNextById(t *testing.T) {
 				"$inc": bson.M{"tries": 1},
 			}
 
-			opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-			dbMock.EXPECT().FindOneAndUpdate(filter, update, opts).Once().Return(res)
+			dbMock.EXPECT().FindOneAndUpdate(filter, update, stdOptsMatcher).Once().Return(res)
 
 			ts, err := q.GetNextById(tt.task.Id)
 
@@ -430,7 +466,7 @@ func TestQueue_Ack(t *testing.T) {
 
 			q := NewQueue(dbMock)
 
-			oId, err := primitive.ObjectIDFromHex(tt.taskId)
+			oId, err := bson.ObjectIDFromHex(tt.taskId)
 
 			if err == nil {
 				dbMock.EXPECT().UpdateOne(
@@ -479,7 +515,7 @@ func TestQueue_Err(t *testing.T) {
 
 			q := NewQueue(dbMock)
 
-			oId, err := primitive.ObjectIDFromHex(tt.taskId)
+			oId, err := bson.ObjectIDFromHex(tt.taskId)
 
 			if err == nil {
 				dbMock.EXPECT().UpdateOne(
@@ -603,11 +639,35 @@ func TestQueue_CreateIndexes(t *testing.T) {
 
 			q := NewQueue(dbMock)
 
-			dbMock.EXPECT().CreateIndexes([]mongo.IndexModel{{
-				Keys: bson.D{{"topic", 1}, {"state", 1}},
-			}, {
-				Keys: bson.D{{"meta.completed", 1}}, Options: options.Index().SetExpireAfterSeconds(3600),
-			}}).Return(tt.error)
+			dbMock.EXPECT().CreateIndexes(mock.MatchedBy(func(indexes []mongo.IndexModel) bool {
+				if len(indexes) != 2 {
+					return false
+				}
+
+				idx0 := indexes[0]
+				if !reflect.DeepEqual(idx0.Keys, bson.D{{Key: "topic", Value: 1}, {Key: "state", Value: 1}}) {
+					return false
+				}
+				if idx0.Options != nil {
+					return false
+				}
+
+				idx1 := indexes[1]
+				if !reflect.DeepEqual(idx1.Keys, bson.D{{Key: "meta.completed", Value: 1}}) {
+					return false
+				}
+
+				if idx1.Options == nil {
+					return false
+				}
+				resolvedOpts := &options.IndexOptions{}
+				for _, f := range idx1.Options.Opts {
+					if err := f(resolvedOpts); err != nil {
+						return false
+					}
+				}
+				return resolvedOpts.ExpireAfterSeconds != nil && *resolvedOpts.ExpireAfterSeconds == 3600
+			})).Return(tt.error)
 
 			err := q.CreateIndexes()
 			assert.Equal(t, err, tt.error)
@@ -645,7 +705,7 @@ func TestQueue_Reschedule(t *testing.T) {
 			dbMock := NewDbInterfaceMock(t)
 			q := NewQueue(dbMock)
 
-			oId := primitive.NewObjectID()
+			oId := bson.NewObjectID()
 
 			taskExpected := Task{
 				Topic:    tt.task.Topic,
@@ -672,3 +732,17 @@ func TestQueue_Reschedule(t *testing.T) {
 		})
 	}
 }
+
+var stdOptsMatcher = mock.MatchedBy(func(opts *options.FindOneAndUpdateOptionsBuilder) bool {
+	if opts == nil {
+		return false
+	}
+
+	resolvedOpts := &options.FindOneAndUpdateOptions{}
+	for _, f := range opts.Opts {
+		if err := f(resolvedOpts); err != nil {
+			return false
+		}
+	}
+	return resolvedOpts.ReturnDocument != nil && *resolvedOpts.ReturnDocument == options.After
+})

@@ -1,13 +1,12 @@
-quiet: False
-disable-version-string: True
-with-expecter: True
-mockname: "{{.InterfaceName}}Mock"
-filename: "{{.InterfaceNameLower}}_test.go"
-outpkg: "{{.PackageName}}"
 dir: "{{.InterfaceDir}}"
-inpackage: True
+structname: "{{.InterfaceName}}Mock"
+filename: "{{.InterfaceName | lower}}_test.go"
+pkgname: "{{.SrcPackageName}}"
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
-  github.com/mbretter/go-mongodb-queue:
+  github.com/mbretter/go-mongodb-queue/v2:
     interfaces:
       DbInterface:
       ChangeStreamInterface:

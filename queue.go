@@ -2,11 +2,11 @@ package queue
 
 import (
 	"errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type Queue struct {
@@ -32,13 +32,13 @@ type Meta struct {
 }
 
 type Task struct {
-	Id       primitive.ObjectID `bson:"_id,omitempty"`
-	Topic    string             `bson:"topic"`
-	Payload  any                `bson:"payload"`
-	Tries    uint               `bson:"tries"`
-	MaxTries uint               `bson:"maxtries"`
-	State    string             `bson:"state"`
-	Message  string             `bson:"message"`
+	Id       bson.ObjectID `bson:"_id,omitempty"`
+	Topic    string        `bson:"topic"`
+	Payload  any           `bson:"payload"`
+	Tries    uint          `bson:"tries"`
+	MaxTries uint          `bson:"maxtries"`
+	State    string        `bson:"state"`
+	Message  string        `bson:"message"`
 	Meta     Meta
 }
 
@@ -142,7 +142,7 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 			"$set": bson.M{"state": StateRunning, "meta.dispatched": nowFunc()},
 			"$inc": bson.M{"tries": 1},
 		},
-		options.FindOneAndUpdate().SetSort(bson.D{{"meta.scheduled", 1}}).SetReturnDocument(options.After),
+		options.FindOneAndUpdate().SetSort(bson.M{"meta.scheduled": 1}).SetReturnDocument(options.After),
 	)
 
 	if errors.Is(res.Err(), mongo.ErrNoDocuments) {
@@ -157,7 +157,7 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 }
 
 // GetNextById retrieves the next pending task by its ID, transitions it to the running state, and increments its tries count.
-func (q *Queue) GetNextById(id primitive.ObjectID) (*Task, error) {
+func (q *Queue) GetNextById(id bson.ObjectID) (*Task, error) {
 	t := Task{}
 	res := q.db.FindOneAndUpdate(bson.M{
 		"_id":   id,
@@ -192,10 +192,10 @@ type Callback func(t Task)
 // Subscribe listens for new tasks on a given topic and calls the provided callback when a new task is available.
 // It processes unprocessed tasks scheduled before starting the watch and continuously monitors for new tasks.
 func (q *Queue) Subscribe(topic string, cb Callback) error {
-	pipeline := bson.D{{"$match", bson.D{
-		{"operationType", "insert"},
-		{"fullDocument.topic", topic},
-		{"fullDocument.state", StatePending}}},
+	pipeline := bson.D{{Key: "$match", Value: bson.D{
+		{Key: "operationType", Value: "insert"},
+		{Key: "fullDocument.topic", Value: topic},
+		{Key: "fullDocument.state", Value: StatePending}}},
 	}
 
 	stream, err := q.db.Watch(mongo.Pipeline{pipeline})
@@ -249,7 +249,7 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 
 // Ack acknowledges a task completion by its ID, updating its state to "completed" and setting the completion timestamp.
 func (q *Queue) Ack(id string) error {
-	oId, err := primitive.ObjectIDFromHex(id)
+	oId, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func (q *Queue) Ack(id string) error {
 
 // Err updates the state of a task to "error" by its ID, setting the completion time and storing the error message.
 func (q *Queue) Err(id string, err error) error {
-	oId, e := primitive.ObjectIDFromHex(id)
+	oId, e := bson.ObjectIDFromHex(id)
 	if e != nil {
 		return e
 	}
@@ -334,9 +334,9 @@ func (q *Queue) Selfcare(topic string, timeout time.Duration) error {
 // CreateIndexes creates MongoDB indexes for the task collection to improve query performance and manage TTL for completed tasks.
 func (q *Queue) CreateIndexes() error {
 	err := q.db.CreateIndexes([]mongo.IndexModel{{
-		Keys: bson.D{{"topic", 1}, {"state", 1}},
+		Keys: bson.D{{Key: "topic", Value: 1}, {Key: "state", Value: 1}},
 	}, {
-		Keys: bson.D{{"meta.completed", 1}}, Options: options.Index().SetExpireAfterSeconds(3600),
+		Keys: bson.D{{Key: "meta.completed", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(3600),
 	}})
 
 	return err
