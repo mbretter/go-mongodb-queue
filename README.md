@@ -94,12 +94,12 @@ Here is a small snippet which demonstrates the usage of subscribe using goroutin
 workerFunc := func(qu queue.Queue, task queue.Task) {
     fmt.Println("worker", task)
     // after processing the task you have to acknowledge it
-    _ = qu.Ack(task.Id.Hex())
+    _ = qu.Ack(ctx, task.Id.Hex())
 }
 
 var wg sync.WaitGroup
 // subscribe and pass the worker function
-err := qu.Subscribe(context.TODO(), "some.topic", func(t queue.Task) {
+err := qu.Subscribe(ctx, "some.topic", func(t queue.Task) {
 		wg.Go(func() {
 				workerFunc(qu, t)
 		})
@@ -121,12 +121,12 @@ After processing a task you have to acknowledge, that you have processed the tas
 In case of an error you can use the `Err` function to mark the task as failed.
 
 ```go
-err := qu.Ack(context.TODO(), task.Id.Hex())
+err := qu.Ack(ctx, task.Id.Hex())
 if err != nil {
     log.Fatal(err)
 }
 
-qu.Err(context.TODO(), task.Id.Hex(), errors.New("something went wrong"))
+qu.Err(ctx, task.Id.Hex(), errors.New("something went wrong"))
 ```
 
 ## Polling
@@ -137,7 +137,7 @@ It is safe to use `GetNext` for the same topic from different processes, there w
 
 ```go
 for {
-    task, err := qu.GetNext(context.TODO(), "some.topic")
+    task, err := qu.GetNext(ctx, "some.topic")
     if err != nil {
         log.Fatal(err)
     }
@@ -146,7 +146,7 @@ for {
         time.Sleep(time.Millisecond * 100)
     } else {
         // process the task
-        _ = qu.Ack(context.TODO(), task.Id.Hex())
+        _ = qu.Ack(ctx, task.Id.Hex())
     }
 }
 ```
@@ -156,7 +156,7 @@ for {
 If a task had an error, and you want to process this task again, you can use `Reschedule`.
 
 ```go
-newTask, err := Reschedule(context.TODO(), task)
+newTask, err := Reschedule(ctx, task)
 ```
 
 When rescheduling, the original task remains untouched, there will create a new task with the same payload and the 
