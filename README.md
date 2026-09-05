@@ -91,7 +91,7 @@ After processing the task you have to `Ack` it, or mark it as `Err`.
 Here is a small snippet which demonstrates the usage of subscribe using goroutines.
 ```go
 // define your worker function
-workerFunc := func(qu *queue.Queue, task queue.Task) {
+workerFunc := func(qu queue.Queue, task queue.Task) {
     fmt.Println("worker", task)
     // after processing the task you have to acknowledge it
     _ = qu.Ack(task.Id.Hex())
