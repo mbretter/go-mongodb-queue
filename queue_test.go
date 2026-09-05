@@ -48,7 +48,7 @@ func TestQueue_Publish(t *testing.T) {
 
 			oId := bson.NewObjectID()
 
-			taskExpected := Task{
+			taskExpected := task{
 				Topic:    tt.topic,
 				Payload:  tt.payload,
 				Tries:    0,
@@ -58,14 +58,14 @@ func TestQueue_Publish(t *testing.T) {
 				},
 				State: StatePending,
 			}
-			dbMock.EXPECT().InsertOne(taskExpected).Return(oId, tt.error)
+			dbMock.EXPECT().InsertOne(context.TODO(), taskExpected).Return(oId, tt.error)
 
 			opts := NewPublishOptions().SetMaxTries(tt.maxTries)
-			task, err := q.Publish(tt.topic, tt.payload, opts, nil)
+			task, err := q.Publish(context.TODO(), tt.topic, tt.payload, opts, nil)
 
 			if tt.error == nil {
 				taskExpected.Id = oId
-				assert.Equal(t, taskExpected, *task)
+				assert.Equal(t, &taskExpected, task)
 			} else {
 				assert.Nil(t, task)
 				assert.Equal(t, tt.error, err)
@@ -86,7 +86,7 @@ func TestQueue_Subscribe(t *testing.T) {
 	tests := []struct {
 		name        string
 		topic       string
-		task        *Task
+		task        *task
 		watchError  error
 		decodeError error
 		updateError error
@@ -94,7 +94,7 @@ func TestQueue_Subscribe(t *testing.T) {
 		{
 			name:  "Success",
 			topic: "topic1",
-			task: &Task{
+			task: &task{
 				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
@@ -114,7 +114,7 @@ func TestQueue_Subscribe(t *testing.T) {
 		{
 			name:  "EventDecodeError",
 			topic: "topic1",
-			task: &Task{
+			task: &task{
 				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
@@ -130,7 +130,7 @@ func TestQueue_Subscribe(t *testing.T) {
 		{
 			name:  "AlreadyProcessed",
 			topic: "topic1",
-			task: &Task{
+			task: &task{
 				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
@@ -145,7 +145,7 @@ func TestQueue_Subscribe(t *testing.T) {
 		{
 			name:  "UpdateError",
 			topic: "topic1",
-			task: &Task{
+			task: &task{
 				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
@@ -172,18 +172,17 @@ func TestQueue_Subscribe(t *testing.T) {
 				}},
 			}
 			changeStream := NewChangeStreamInterfaceMock(t)
-			dbMock.EXPECT().Watch(mongo.Pipeline{pipeline}).Return(changeStream, tt.watchError)
+			dbMock.EXPECT().Watch(context.TODO(), mongo.Pipeline{pipeline}).Return(changeStream, tt.watchError)
 
-			res := mongo.NewSingleResultFromDocument(Task{}, mongo.ErrNoDocuments, nil)
+			res := mongo.NewSingleResultFromDocument(&task{}, mongo.ErrNoDocuments, nil)
 
 			if tt.watchError != nil {
 				goto runTest
 			}
 
 			changeStream.EXPECT().Close(context.TODO()).Return(nil)
-			dbMock.EXPECT().Context().Return(context.TODO())
 			//options.FindOneAndUpdate().SetSort(bson.M{"meta.scheduled": 1}).SetReturnDocument(options.After))
-			dbMock.EXPECT().FindOneAndUpdate(bson.M{
+			dbMock.EXPECT().FindOneAndUpdate(context.TODO(), bson.M{
 				"topic": tt.topic,
 				"state": StatePending,
 				"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
@@ -210,7 +209,7 @@ func TestQueue_Subscribe(t *testing.T) {
 				changeStream.EXPECT().Next(context.TODO()).Return(false)
 				var evt event
 				changeStream.EXPECT().Decode(&evt).RunAndReturn(func(i any) error {
-					i.(*event).Task = *tt.task
+					i.(*event).Task = tt.task
 					return tt.decodeError
 				})
 
@@ -226,7 +225,7 @@ func TestQueue_Subscribe(t *testing.T) {
 				retTask.State = StateRunning
 				res = mongo.NewSingleResultFromDocument(retTask, tt.updateError, nil)
 
-				dbMock.EXPECT().FindOneAndUpdate(bson.M{
+				dbMock.EXPECT().FindOneAndUpdate(context.TODO(), bson.M{
 					"_id":   tt.task.Id,
 					"state": StatePending,
 					"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
@@ -236,7 +235,7 @@ func TestQueue_Subscribe(t *testing.T) {
 				}, stdOptsMatcher).Once().Return(res)
 
 				if tt.updateError != nil {
-					dbMock.EXPECT().UpdateOne(
+					dbMock.EXPECT().UpdateOne(context.TODO(),
 						bson.M{"_id": tt.task.Id},
 						bson.M{"$set": bson.M{
 							"state":          StateError,
@@ -249,8 +248,8 @@ func TestQueue_Subscribe(t *testing.T) {
 			}
 
 		runTest:
-			err := q.Subscribe(tt.topic, func(task Task) {
-				assert.Equal(t, StateRunning, task.State)
+			err := q.Subscribe(context.TODO(), tt.topic, func(task Task) {
+				assert.Equal(t, StateRunning, task.GetState())
 			})
 
 			if tt.watchError != nil {
@@ -274,13 +273,13 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 	tests := []struct {
 		name  string
 		topic string
-		task  Task
+		task  *task
 		error error
 	}{
 		{
 			name:  "Success",
 			topic: "topic1",
-			task: Task{
+			task: &task{
 				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
@@ -295,7 +294,7 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 		{
 			name:  "Error",
 			topic: "topic1",
-			task:  Task{},
+			task:  &task{},
 			error: errors.New("FindOneAndUpdate failed"),
 		},
 	}
@@ -312,10 +311,9 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 				}},
 			}
 			changeStream := NewChangeStreamInterfaceMock(t)
-			dbMock.EXPECT().Watch(mongo.Pipeline{pipeline}).Return(changeStream, nil)
+			dbMock.EXPECT().Watch(context.TODO(), mongo.Pipeline{pipeline}).Return(changeStream, nil)
 
 			changeStream.EXPECT().Close(context.TODO()).Return(nil)
-			dbMock.EXPECT().Context().Return(context.TODO())
 
 			res := mongo.NewSingleResultFromDocument(tt.task, tt.error, nil)
 			resNoDoc := mongo.NewSingleResultFromDocument(tt.task, mongo.ErrNoDocuments, nil)
@@ -346,15 +344,15 @@ func TestQueue_SubscribeUnprocessedTasks(t *testing.T) {
 					resolvedOpts.Sort != nil && reflect.DeepEqual(resolvedOpts.Sort, bson.M{"meta.scheduled": 1})
 			})
 
-			dbMock.EXPECT().FindOneAndUpdate(filter, update, optsMatcher).Once().Return(res)
+			dbMock.EXPECT().FindOneAndUpdate(context.TODO(), filter, update, optsMatcher).Once().Return(res)
 
 			if tt.error == nil {
-				dbMock.EXPECT().FindOneAndUpdate(filter, update, optsMatcher).Once().Return(resNoDoc)
+				dbMock.EXPECT().FindOneAndUpdate(context.TODO(), filter, update, optsMatcher).Once().Return(resNoDoc)
 				changeStream.EXPECT().Next(context.TODO()).Return(false)
 			}
 
-			err := q.Subscribe(tt.topic, func(task Task) {
-				assert.Equal(t, StateRunning, task.State)
+			err := q.Subscribe(context.TODO(), tt.topic, func(task Task) {
+				assert.Equal(t, StateRunning, task.GetState())
 			})
 
 			assert.Equal(t, tt.error, err)
@@ -372,12 +370,12 @@ func TestQueue_GetNextById(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		task  Task
+		task  *task
 		error error
 	}{
 		{
 			name: "Success",
-			task: Task{
+			task: &task{
 				Id:       bson.NewObjectID(),
 				Topic:    "topic1",
 				Payload:  "payload1",
@@ -391,7 +389,7 @@ func TestQueue_GetNextById(t *testing.T) {
 		},
 		{
 			name: "Error",
-			task: Task{
+			task: &task{
 				Id: bson.NewObjectID(),
 			},
 			error: errors.New("no doc found"),
@@ -423,12 +421,12 @@ func TestQueue_GetNextById(t *testing.T) {
 				"$inc": bson.M{"tries": 1},
 			}
 
-			dbMock.EXPECT().FindOneAndUpdate(filter, update, stdOptsMatcher).Once().Return(res)
+			dbMock.EXPECT().FindOneAndUpdate(context.TODO(), filter, update, stdOptsMatcher).Once().Return(res)
 
-			ts, err := q.GetNextById(tt.task.Id)
+			ts, err := q.GetNextById(context.TODO(), tt.task.Id)
 
 			if tt.error == nil {
-				assert.Equal(t, tt.task.Topic, ts.Topic)
+				assert.Equal(t, tt.task.Topic, ts.GetTopic())
 				assert.Equal(t, tt.error, err)
 			} else {
 				assert.Nil(t, ts)
@@ -469,7 +467,7 @@ func TestQueue_Ack(t *testing.T) {
 			oId, err := bson.ObjectIDFromHex(tt.taskId)
 
 			if err == nil {
-				dbMock.EXPECT().UpdateOne(
+				dbMock.EXPECT().UpdateOne(context.TODO(),
 					bson.M{"_id": oId},
 					bson.M{"$set": bson.M{
 						"state":          StateCompleted,
@@ -477,7 +475,7 @@ func TestQueue_Ack(t *testing.T) {
 					}}).Return(tt.error)
 			}
 
-			err = q.Ack(tt.taskId)
+			err = q.Ack(context.TODO(), tt.taskId)
 
 			if tt.name == "InvalidObjectId" {
 				assert.Equal(t, "the provided hex string is not a valid ObjectID", err.Error())
@@ -518,7 +516,7 @@ func TestQueue_Err(t *testing.T) {
 			oId, err := bson.ObjectIDFromHex(tt.taskId)
 
 			if err == nil {
-				dbMock.EXPECT().UpdateOne(
+				dbMock.EXPECT().UpdateOne(context.TODO(),
 					bson.M{"_id": oId},
 					bson.M{"$set": bson.M{
 						"state":          StateError,
@@ -527,7 +525,7 @@ func TestQueue_Err(t *testing.T) {
 					}}).Return(tt.error)
 			}
 
-			err = q.Err(tt.taskId, errors.New("some error"))
+			err = q.Err(context.TODO(), tt.taskId, errors.New("some error"))
 
 			if tt.name == "InvalidObjectId" {
 				assert.Equal(t, "the provided hex string is not a valid ObjectID", err.Error())
@@ -585,7 +583,7 @@ func TestQueue_Selftest(t *testing.T) {
 				query1["topic"] = tt.topic
 			}
 
-			dbMock.EXPECT().UpdateMany(query1,
+			dbMock.EXPECT().UpdateMany(context.TODO(), query1,
 				bson.M{"$set": bson.M{
 					"state":           StatePending,
 					"meta.dispatched": nil},
@@ -600,13 +598,13 @@ func TestQueue_Selftest(t *testing.T) {
 				query2["topic"] = tt.topic
 			}
 
-			dbMock.EXPECT().UpdateMany(query2,
+			dbMock.EXPECT().UpdateMany(context.TODO(), query2,
 				bson.M{"$set": bson.M{
 					"state":          StateError,
 					"meta.completed": nowFunc()},
 				}).Return(tt.error2)
 
-			err := q.Selfcare(tt.topic, 0)
+			err := q.Selfcare(context.TODO(), tt.topic, 0)
 
 			if tt.error1 != nil {
 				assert.Equal(t, tt.error1, err)
@@ -639,7 +637,7 @@ func TestQueue_CreateIndexes(t *testing.T) {
 
 			q := NewQueue(dbMock)
 
-			dbMock.EXPECT().CreateIndexes(mock.MatchedBy(func(indexes []mongo.IndexModel) bool {
+			dbMock.EXPECT().CreateIndexes(context.TODO(), mock.MatchedBy(func(indexes []mongo.IndexModel) bool {
 				if len(indexes) != 2 {
 					return false
 				}
@@ -669,7 +667,7 @@ func TestQueue_CreateIndexes(t *testing.T) {
 				return resolvedOpts.ExpireAfterSeconds != nil && *resolvedOpts.ExpireAfterSeconds == 3600
 			})).Return(tt.error)
 
-			err := q.CreateIndexes()
+			err := q.CreateIndexes(context.TODO())
 			assert.Equal(t, err, tt.error)
 		})
 	}
@@ -683,12 +681,12 @@ func TestQueue_Reschedule(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		task  Task
+		task  *task
 		error error
 	}{
 		{
 			name: "Success",
-			task: Task{
+			task: &task{
 				Topic:    "foo.bar",
 				Payload:  "whatever",
 				Tries:    1,
@@ -707,7 +705,7 @@ func TestQueue_Reschedule(t *testing.T) {
 
 			oId := bson.NewObjectID()
 
-			taskExpected := Task{
+			taskExpected := task{
 				Topic:    tt.task.Topic,
 				Payload:  tt.task.Payload,
 				Tries:    1,
@@ -717,13 +715,13 @@ func TestQueue_Reschedule(t *testing.T) {
 				},
 				State: StatePending,
 			}
-			dbMock.EXPECT().InsertOne(taskExpected).Return(oId, tt.error)
+			dbMock.EXPECT().InsertOne(context.TODO(), taskExpected).Return(oId, tt.error)
 
-			task, err := q.Reschedule(&tt.task)
+			task, err := q.Reschedule(context.TODO(), tt.task)
 
 			if tt.error == nil {
 				taskExpected.Id = oId
-				assert.Equal(t, taskExpected, *task)
+				assert.Equal(t, &taskExpected, task)
 			} else {
 				assert.Nil(t, task)
 				assert.Equal(t, tt.error, err)

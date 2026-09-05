@@ -12,18 +12,18 @@ polling too.
 The motivation was to build an easy-to-integrate queuing system without sophisticated features, without external 
 dependencies, and with direct integration into your application.
 
-Version 2 uses mongo-driver/v2.
+Version 2 uses mongo-driver/v2, while version 3 provides a more idiomatic approach, exposing the context and providing interfaces instead of concrete types.
 
 ## Install
 
 ```
-go get github.com/mbretter/go-mongodb-queue/v2
+go get github.com/mbretter/go-mongodb-queue/v3
 ```
 
 import
 
 ```go
-import queue "github.com/mbretter/go-mongodb-queue/v2"
+import queue "github.com/mbretter/go-mongodb-queue/v3"
 ```
 
 ## Features
@@ -53,7 +53,7 @@ defer client.Disconnect(ctx)
 collection := client.Database("mydb").Collection("queue")
 
 // make the queue-db
-queueDb := queue.NewStdDb(collection, ctx)
+queueDb := queue.NewStdDb(collection)
 
 // make the queue 
 qu := queue.NewQueue(queueDb)
@@ -76,7 +76,7 @@ payload := Payload{
     Num:  73,
 }
 
-task, err := qu.Publish("some.topic", &payload)
+task, err := qu.Publish(context.TODO(), "some.topic", &payload)
 if err != nil {
     log.Fatal(err)
 }
@@ -93,18 +93,16 @@ Here is a small snippet which demonstrates the usage of subscribe using goroutin
 // define your worker function
 workerFunc := func(qu *queue.Queue, task queue.Task) {
     fmt.Println("worker", task)
-	// after processing the task you have to acknowledge it
+    // after processing the task you have to acknowledge it
     _ = qu.Ack(task.Id.Hex())
 }
 
 var wg sync.WaitGroup
 // subscribe and pass the worker function
-err := qu.Subscribe("some.topic", func(t queue.Task) {
-    wg.Add(1)
-    go func() {
-        defer wg.Done()
-        workerFunc(qu, t)
-    }()
+err := qu.Subscribe(context.TODO(), "some.topic", func(t queue.Task) {
+		wg.Go(func() {
+				workerFunc(qu, t)
+		})
 })
 
 if err != nil {
@@ -123,12 +121,12 @@ After processing a task you have to acknowledge, that you have processed the tas
 In case of an error you can use the `Err` function to mark the task as failed.
 
 ```go
-err := qu.Ack(task.Id.Hex())
+err := qu.Ack(context.TODO(), task.Id.Hex())
 if err != nil {
     log.Fatal(err)
 }
 
-qu.Err(task.Id.Hex(), errors.New("something went wrong"))
+qu.Err(context.TODO(), task.Id.Hex(), errors.New("something went wrong"))
 ```
 
 ## Polling
@@ -139,7 +137,7 @@ It is safe to use `GetNext` for the same topic from different processes, there w
 
 ```go
 for {
-    task, err := qu.GetNext("some.topic")
+    task, err := qu.GetNext(context.TODO(), "some.topic")
     if err != nil {
         log.Fatal(err)
     }
@@ -148,7 +146,7 @@ for {
         time.Sleep(time.Millisecond * 100)
     } else {
         // process the task
-        _ = qu.Ack(task.Id.Hex())
+        _ = qu.Ack(context.TODO(), task.Id.Hex())
     }
 }
 ```
@@ -158,7 +156,7 @@ for {
 If a task had an error, and you want to process this task again, you can use `Reschedule`.
 
 ```go
-newTask, err := Reschedule(task)
+newTask, err := Reschedule(context.TODO(), task)
 ```
 
 When rescheduling, the original task remains untouched, there will create a new task with the same payload and the 

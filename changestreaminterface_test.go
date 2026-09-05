@@ -89,7 +89,7 @@ func (_c *ChangeStreamInterfaceMock_Close_Call) RunAndReturn(run func(ctx contex
 }
 
 // Decode provides a mock function for the type ChangeStreamInterfaceMock
-func (_mock *ChangeStreamInterfaceMock) Decode(v interface{}) error {
+func (_mock *ChangeStreamInterfaceMock) Decode(v any) error {
 	ret := _mock.Called(v)
 
 	if len(ret) == 0 {
@@ -97,7 +97,7 @@ func (_mock *ChangeStreamInterfaceMock) Decode(v interface{}) error {
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(interface{}) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(any) error); ok {
 		r0 = returnFunc(v)
 	} else {
 		r0 = ret.Error(0)
@@ -111,16 +111,16 @@ type ChangeStreamInterfaceMock_Decode_Call struct {
 }
 
 // Decode is a helper method to define mock.On call
-//   - v interface{}
+//   - v any
 func (_e *ChangeStreamInterfaceMock_Expecter) Decode(v any) *ChangeStreamInterfaceMock_Decode_Call {
 	return &ChangeStreamInterfaceMock_Decode_Call{Call: _e.mock.On("Decode", v)}
 }
 
-func (_c *ChangeStreamInterfaceMock_Decode_Call) Run(run func(v interface{})) *ChangeStreamInterfaceMock_Decode_Call {
+func (_c *ChangeStreamInterfaceMock_Decode_Call) Run(run func(v any)) *ChangeStreamInterfaceMock_Decode_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 interface{}
+		var arg0 any
 		if args[0] != nil {
-			arg0 = args[0].(interface{})
+			arg0 = args[0].(any)
 		}
 		run(
 			arg0,
@@ -134,7 +134,7 @@ func (_c *ChangeStreamInterfaceMock_Decode_Call) Return(err error) *ChangeStream
 	return _c
 }
 
-func (_c *ChangeStreamInterfaceMock_Decode_Call) RunAndReturn(run func(v interface{}) error) *ChangeStreamInterfaceMock_Decode_Call {
+func (_c *ChangeStreamInterfaceMock_Decode_Call) RunAndReturn(run func(v any) error) *ChangeStreamInterfaceMock_Decode_Call {
 	_c.Call.Return(run)
 	return _c
 }

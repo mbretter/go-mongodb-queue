@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -9,7 +10,28 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-type Queue struct {
+type Queue interface {
+	Publish(ctx context.Context, topic string, payload any, opts ...*PublishOptions) (Task, error)
+	GetNext(ctx context.Context, topic string) (Task, error)
+	GetNextById(ctx context.Context, id bson.ObjectID) (Task, error)
+	Reschedule(ctx context.Context, task Task) (Task, error)
+	Subscribe(ctx context.Context, topic string, cb Callback) error
+	Ack(ctx context.Context, id string) error
+	Err(ctx context.Context, id string, err error) error
+	Selfcare(ctx context.Context, topic string, timeout time.Duration) error
+	CreateIndexes(ctx context.Context) error
+}
+
+type DbInterface interface {
+	InsertOne(ctx context.Context, document any) (bson.ObjectID, error)
+	FindOneAndUpdate(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult
+	UpdateOne(ctx context.Context, filter any, update any) error
+	UpdateMany(ctx context.Context, filter any, update any) error
+	Watch(ctx context.Context, pipeline any) (ChangeStreamInterface, error)
+	CreateIndexes(ctx context.Context, index []mongo.IndexModel) error
+}
+
+type queue struct {
 	db DbInterface
 }
 
@@ -31,7 +53,18 @@ type Meta struct {
 	Completed  *time.Time `bson:"completed"`
 }
 
-type Task struct {
+type Task interface {
+	GetId() bson.ObjectID
+	GetTopic() string
+	GetPayload() any
+	GetTries() uint
+	GetMaxTries() uint
+	GetState() string
+	GetMessage() string
+	GetMeta() Meta
+}
+
+type task struct {
 	Id       bson.ObjectID `bson:"_id,omitempty"`
 	Topic    string        `bson:"topic"`
 	Payload  any           `bson:"payload"`
@@ -42,13 +75,45 @@ type Task struct {
 	Meta     Meta
 }
 
+func (t *task) GetId() bson.ObjectID {
+	return t.Id
+}
+
+func (t *task) GetTopic() string {
+	return t.Topic
+}
+
+func (t *task) GetPayload() any {
+	return t.Payload
+}
+
+func (t *task) GetTries() uint {
+	return t.Tries
+}
+
+func (t *task) GetMaxTries() uint {
+	return t.MaxTries
+}
+
+func (t *task) GetState() string {
+	return t.State
+}
+
+func (t *task) GetMessage() string {
+	return t.Message
+}
+
+func (t *task) GetMeta() Meta {
+	return t.Meta
+}
+
 type event struct {
 	Task Task `bson:"fullDocument"`
 }
 
 // NewQueue initializes a new Queue instance with the provided DbInterface.
-func NewQueue(db DbInterface) *Queue {
-	queue := Queue{
+func NewQueue(db DbInterface) Queue {
+	queue := queue{
 		db: db,
 	}
 
@@ -87,7 +152,7 @@ func (p *PublishOptions) setTries(tries uint) *PublishOptions {
 
 // Publish inserts a new task into the queue with the given topic, payload, and maxTries.
 // If maxTries is zero, it defaults to DefaultMaxTries.
-func (q *Queue) Publish(topic string, payload any, opts ...*PublishOptions) (*Task, error) {
+func (q *queue) Publish(ctx context.Context, topic string, payload any, opts ...*PublishOptions) (Task, error) {
 
 	o := PublishOptions{
 		MaxTries: DefaultMaxTries,
@@ -107,7 +172,7 @@ func (q *Queue) Publish(topic string, payload any, opts ...*PublishOptions) (*Ta
 		}
 	}
 
-	t := Task{
+	t := task{
 		Topic:    topic,
 		Payload:  payload,
 		Tries:    uint(o.Tries),
@@ -120,7 +185,7 @@ func (q *Queue) Publish(topic string, payload any, opts ...*PublishOptions) (*Ta
 		State: StatePending,
 	}
 
-	insertedId, err := q.db.InsertOne(t)
+	insertedId, err := q.db.InsertOne(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -131,9 +196,9 @@ func (q *Queue) Publish(topic string, payload any, opts ...*PublishOptions) (*Ta
 }
 
 // GetNext retrieves the next item from the queue for the given topic, marks it as running, and increments its tries count.
-func (q *Queue) GetNext(topic string) (*Task, error) {
-	t := Task{}
-	res := q.db.FindOneAndUpdate(bson.M{
+func (q *queue) GetNext(ctx context.Context, topic string) (Task, error) {
+	t := task{}
+	res := q.db.FindOneAndUpdate(ctx, bson.M{
 		"topic": topic,
 		"state": StatePending,
 		"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
@@ -157,9 +222,9 @@ func (q *Queue) GetNext(topic string) (*Task, error) {
 }
 
 // GetNextById retrieves the next pending task by its ID, transitions it to the running state, and increments its tries count.
-func (q *Queue) GetNextById(id bson.ObjectID) (*Task, error) {
-	t := Task{}
-	res := q.db.FindOneAndUpdate(bson.M{
+func (q *queue) GetNextById(ctx context.Context, id bson.ObjectID) (Task, error) {
+	t := task{}
+	res := q.db.FindOneAndUpdate(ctx, bson.M{
 		"_id":   id,
 		"state": StatePending,
 		"$expr": bson.M{"$lt": bson.A{"$tries", "$maxtries"}},
@@ -183,32 +248,32 @@ func (q *Queue) GetNextById(id bson.ObjectID) (*Task, error) {
 }
 
 // Reschedule republishes a task to the queue, retaining its topic, payload, tries, and maxTries settings.
-func (q *Queue) Reschedule(task *Task) (*Task, error) {
-	return q.Publish(task.Topic, task.Payload, NewPublishOptions().setTries(task.Tries).SetMaxTries(task.MaxTries))
+func (q *queue) Reschedule(ctx context.Context, task Task) (Task, error) {
+	return q.Publish(ctx, task.GetTopic(), task.GetPayload(), NewPublishOptions().setTries(task.GetTries()).SetMaxTries(task.GetMaxTries()))
 }
 
 type Callback func(t Task)
 
 // Subscribe listens for new tasks on a given topic and calls the provided callback when a new task is available.
 // It processes unprocessed tasks scheduled before starting the watch and continuously monitors for new tasks.
-func (q *Queue) Subscribe(topic string, cb Callback) error {
+func (q *queue) Subscribe(ctx context.Context, topic string, cb Callback) error {
 	pipeline := bson.D{{Key: "$match", Value: bson.D{
 		{Key: "operationType", Value: "insert"},
 		{Key: "fullDocument.topic", Value: topic},
 		{Key: "fullDocument.state", Value: StatePending}}},
 	}
 
-	stream, err := q.db.Watch(mongo.Pipeline{pipeline})
+	stream, err := q.db.Watch(ctx, mongo.Pipeline{pipeline})
 	if err != nil {
 		return err
 	}
-	//goland:noinspection ALL
-	defer stream.Close(q.db.Context())
+
+	defer stream.Close(ctx)
 
 	processedUntil := nowFunc()
 	// process unprocessed tasks scheduled before we started watching
 	for {
-		task, err := q.GetNext(topic)
+		task, err := q.GetNext(ctx, topic)
 		if err != nil {
 			return err
 		}
@@ -217,11 +282,11 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 			break
 		}
 
-		processedUntil = task.Meta.Created
-		cb(*task)
+		processedUntil = task.GetMeta().Created
+		cb(task)
 	}
 
-	for stream.Next(q.db.Context()) {
+	for stream.Next(ctx) {
 		var evt event
 
 		if err := stream.Decode(&evt); err != nil {
@@ -229,18 +294,18 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 		}
 
 		// already processed
-		if evt.Task.Meta.Created.Before(processedUntil) {
+		if evt.Task.GetMeta().Created.Before(processedUntil) {
 			continue
 		}
 
-		task, err := q.GetNextById(evt.Task.Id)
+		task, err := q.GetNextById(ctx, evt.Task.GetId())
 		if err != nil {
-			_ = q.Err(evt.Task.Id.Hex(), err)
+			_ = q.Err(ctx, evt.Task.GetId().Hex(), err)
 			continue
 		}
 
 		if task != nil {
-			cb(*task)
+			cb(task)
 		}
 	}
 
@@ -248,13 +313,14 @@ func (q *Queue) Subscribe(topic string, cb Callback) error {
 }
 
 // Ack acknowledges a task completion by its ID, updating its state to "completed" and setting the completion timestamp.
-func (q *Queue) Ack(id string) error {
+func (q *queue) Ack(ctx context.Context, id string) error {
 	oId, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
 
 	return q.db.UpdateOne(
+		ctx,
 		bson.M{"_id": oId},
 		bson.M{"$set": bson.M{
 			"state":          StateCompleted,
@@ -263,13 +329,14 @@ func (q *Queue) Ack(id string) error {
 }
 
 // Err updates the state of a task to "error" by its ID, setting the completion time and storing the error message.
-func (q *Queue) Err(id string, err error) error {
+func (q *queue) Err(ctx context.Context, id string, err error) error {
 	oId, e := bson.ObjectIDFromHex(id)
 	if e != nil {
 		return e
 	}
 
 	return q.db.UpdateOne(
+		ctx,
 		bson.M{"_id": oId},
 		bson.M{"$set": bson.M{
 			"state":          StateError,
@@ -281,7 +348,7 @@ func (q *Queue) Err(id string, err error) error {
 // Selfcare re-schedules long-running tasks and sets tasks exceeding max tries to error state.
 // It updates tasks in an ongoing state that haven't been acknowledged within a specific timeout period.
 // If timeout is zero, the default timeout value is used. Optionally, tasks can be filtered by topic.
-func (q *Queue) Selfcare(topic string, timeout time.Duration) error {
+func (q *queue) Selfcare(ctx context.Context, topic string, timeout time.Duration) error {
 	// re-schedule long-running tasks
 	// this only happens if the processor could not ack the task, i.e. the application crashed
 
@@ -298,6 +365,7 @@ func (q *Queue) Selfcare(topic string, timeout time.Duration) error {
 	}
 
 	err1 := q.db.UpdateMany(
+		ctx,
 		query,
 		bson.M{"$set": bson.M{
 			"state":           StatePending,
@@ -314,6 +382,7 @@ func (q *Queue) Selfcare(topic string, timeout time.Duration) error {
 	}
 
 	err2 := q.db.UpdateMany(
+		ctx,
 		query,
 		bson.M{"$set": bson.M{
 			"state":          StateError,
@@ -332,8 +401,8 @@ func (q *Queue) Selfcare(topic string, timeout time.Duration) error {
 }
 
 // CreateIndexes creates MongoDB indexes for the task collection to improve query performance and manage TTL for completed tasks.
-func (q *Queue) CreateIndexes() error {
-	err := q.db.CreateIndexes([]mongo.IndexModel{{
+func (q *queue) CreateIndexes(ctx context.Context) error {
+	err := q.db.CreateIndexes(ctx, []mongo.IndexModel{{
 		Keys: bson.D{{Key: "topic", Value: 1}, {Key: "state", Value: 1}},
 	}, {
 		Keys: bson.D{{Key: "meta.completed", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(3600),

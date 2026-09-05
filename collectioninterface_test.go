@@ -40,7 +40,7 @@ func (_m *CollectionInterfaceMock) EXPECT() *CollectionInterfaceMock_Expecter {
 }
 
 // FindOneAndUpdate provides a mock function for the type CollectionInterfaceMock
-func (_mock *CollectionInterfaceMock) FindOneAndUpdate(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult {
+func (_mock *CollectionInterfaceMock) FindOneAndUpdate(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult {
 	// options.Lister[options.FindOneAndUpdateOptions]
 	_va := make([]any, len(opts))
 	for _i := range opts {
@@ -56,7 +56,7 @@ func (_mock *CollectionInterfaceMock) FindOneAndUpdate(ctx context.Context, filt
 	}
 
 	var r0 *mongo.SingleResult
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, interface{}, ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any, ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult); ok {
 		r0 = returnFunc(ctx, filter, update, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -73,27 +73,27 @@ type CollectionInterfaceMock_FindOneAndUpdate_Call struct {
 
 // FindOneAndUpdate is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filter interface{}
-//   - update interface{}
+//   - filter any
+//   - update any
 //   - opts ...options.Lister[options.FindOneAndUpdateOptions]
 func (_e *CollectionInterfaceMock_Expecter) FindOneAndUpdate(ctx any, filter any, update any, opts ...any) *CollectionInterfaceMock_FindOneAndUpdate_Call {
 	return &CollectionInterfaceMock_FindOneAndUpdate_Call{Call: _e.mock.On("FindOneAndUpdate",
 		append([]any{ctx, filter, update}, opts...)...)}
 }
 
-func (_c *CollectionInterfaceMock_FindOneAndUpdate_Call) Run(run func(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions])) *CollectionInterfaceMock_FindOneAndUpdate_Call {
+func (_c *CollectionInterfaceMock_FindOneAndUpdate_Call) Run(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions])) *CollectionInterfaceMock_FindOneAndUpdate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
 		}
-		var arg2 interface{}
+		var arg2 any
 		if args[2] != nil {
-			arg2 = args[2].(interface{})
+			arg2 = args[2].(any)
 		}
 		var arg3 []options.Lister[options.FindOneAndUpdateOptions]
 		variadicArgs := make([]options.Lister[options.FindOneAndUpdateOptions], len(args)-3)
@@ -118,7 +118,7 @@ func (_c *CollectionInterfaceMock_FindOneAndUpdate_Call) Return(singleResult *mo
 	return _c
 }
 
-func (_c *CollectionInterfaceMock_FindOneAndUpdate_Call) RunAndReturn(run func(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult) *CollectionInterfaceMock_FindOneAndUpdate_Call {
+func (_c *CollectionInterfaceMock_FindOneAndUpdate_Call) RunAndReturn(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult) *CollectionInterfaceMock_FindOneAndUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -168,7 +168,7 @@ func (_c *CollectionInterfaceMock_Indexes_Call) RunAndReturn(run func() mongo.In
 }
 
 // InsertOne provides a mock function for the type CollectionInterfaceMock
-func (_mock *CollectionInterfaceMock) InsertOne(ctx context.Context, document interface{}, opts ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error) {
+func (_mock *CollectionInterfaceMock) InsertOne(ctx context.Context, document any, opts ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error) {
 	// options.Lister[options.InsertOneOptions]
 	_va := make([]any, len(opts))
 	for _i := range opts {
@@ -185,17 +185,17 @@ func (_mock *CollectionInterfaceMock) InsertOne(ctx context.Context, document in
 
 	var r0 *mongo.InsertOneResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error)); ok {
 		return returnFunc(ctx, document, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, ...options.Lister[options.InsertOneOptions]) *mongo.InsertOneResult); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, ...options.Lister[options.InsertOneOptions]) *mongo.InsertOneResult); ok {
 		r0 = returnFunc(ctx, document, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*mongo.InsertOneResult)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, interface{}, ...options.Lister[options.InsertOneOptions]) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, any, ...options.Lister[options.InsertOneOptions]) error); ok {
 		r1 = returnFunc(ctx, document, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -210,22 +210,22 @@ type CollectionInterfaceMock_InsertOne_Call struct {
 
 // InsertOne is a helper method to define mock.On call
 //   - ctx context.Context
-//   - document interface{}
+//   - document any
 //   - opts ...options.Lister[options.InsertOneOptions]
 func (_e *CollectionInterfaceMock_Expecter) InsertOne(ctx any, document any, opts ...any) *CollectionInterfaceMock_InsertOne_Call {
 	return &CollectionInterfaceMock_InsertOne_Call{Call: _e.mock.On("InsertOne",
 		append([]any{ctx, document}, opts...)...)}
 }
 
-func (_c *CollectionInterfaceMock_InsertOne_Call) Run(run func(ctx context.Context, document interface{}, opts ...options.Lister[options.InsertOneOptions])) *CollectionInterfaceMock_InsertOne_Call {
+func (_c *CollectionInterfaceMock_InsertOne_Call) Run(run func(ctx context.Context, document any, opts ...options.Lister[options.InsertOneOptions])) *CollectionInterfaceMock_InsertOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
 		}
 		var arg2 []options.Lister[options.InsertOneOptions]
 		variadicArgs := make([]options.Lister[options.InsertOneOptions], len(args)-2)
@@ -249,13 +249,13 @@ func (_c *CollectionInterfaceMock_InsertOne_Call) Return(res *mongo.InsertOneRes
 	return _c
 }
 
-func (_c *CollectionInterfaceMock_InsertOne_Call) RunAndReturn(run func(ctx context.Context, document interface{}, opts ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error)) *CollectionInterfaceMock_InsertOne_Call {
+func (_c *CollectionInterfaceMock_InsertOne_Call) RunAndReturn(run func(ctx context.Context, document any, opts ...options.Lister[options.InsertOneOptions]) (*mongo.InsertOneResult, error)) *CollectionInterfaceMock_InsertOne_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateMany provides a mock function for the type CollectionInterfaceMock
-func (_mock *CollectionInterfaceMock) UpdateMany(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error) {
+func (_mock *CollectionInterfaceMock) UpdateMany(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error) {
 	// options.Lister[options.UpdateManyOptions]
 	_va := make([]any, len(opts))
 	for _i := range opts {
@@ -272,17 +272,17 @@ func (_mock *CollectionInterfaceMock) UpdateMany(ctx context.Context, filter int
 
 	var r0 *mongo.UpdateResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any, ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error)); ok {
 		return returnFunc(ctx, filter, update, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateManyOptions]) *mongo.UpdateResult); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any, ...options.Lister[options.UpdateManyOptions]) *mongo.UpdateResult); ok {
 		r0 = returnFunc(ctx, filter, update, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*mongo.UpdateResult)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateManyOptions]) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, any, any, ...options.Lister[options.UpdateManyOptions]) error); ok {
 		r1 = returnFunc(ctx, filter, update, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -297,27 +297,27 @@ type CollectionInterfaceMock_UpdateMany_Call struct {
 
 // UpdateMany is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filter interface{}
-//   - update interface{}
+//   - filter any
+//   - update any
 //   - opts ...options.Lister[options.UpdateManyOptions]
 func (_e *CollectionInterfaceMock_Expecter) UpdateMany(ctx any, filter any, update any, opts ...any) *CollectionInterfaceMock_UpdateMany_Call {
 	return &CollectionInterfaceMock_UpdateMany_Call{Call: _e.mock.On("UpdateMany",
 		append([]any{ctx, filter, update}, opts...)...)}
 }
 
-func (_c *CollectionInterfaceMock_UpdateMany_Call) Run(run func(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateManyOptions])) *CollectionInterfaceMock_UpdateMany_Call {
+func (_c *CollectionInterfaceMock_UpdateMany_Call) Run(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateManyOptions])) *CollectionInterfaceMock_UpdateMany_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
 		}
-		var arg2 interface{}
+		var arg2 any
 		if args[2] != nil {
-			arg2 = args[2].(interface{})
+			arg2 = args[2].(any)
 		}
 		var arg3 []options.Lister[options.UpdateManyOptions]
 		variadicArgs := make([]options.Lister[options.UpdateManyOptions], len(args)-3)
@@ -342,13 +342,13 @@ func (_c *CollectionInterfaceMock_UpdateMany_Call) Return(res *mongo.UpdateResul
 	return _c
 }
 
-func (_c *CollectionInterfaceMock_UpdateMany_Call) RunAndReturn(run func(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error)) *CollectionInterfaceMock_UpdateMany_Call {
+func (_c *CollectionInterfaceMock_UpdateMany_Call) RunAndReturn(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateManyOptions]) (*mongo.UpdateResult, error)) *CollectionInterfaceMock_UpdateMany_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateOne provides a mock function for the type CollectionInterfaceMock
-func (_mock *CollectionInterfaceMock) UpdateOne(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error) {
+func (_mock *CollectionInterfaceMock) UpdateOne(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error) {
 	// options.Lister[options.UpdateOneOptions]
 	_va := make([]any, len(opts))
 	for _i := range opts {
@@ -365,17 +365,17 @@ func (_mock *CollectionInterfaceMock) UpdateOne(ctx context.Context, filter inte
 
 	var r0 *mongo.UpdateResult
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any, ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)); ok {
 		return returnFunc(ctx, filter, update, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateOneOptions]) *mongo.UpdateResult); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any, ...options.Lister[options.UpdateOneOptions]) *mongo.UpdateResult); ok {
 		r0 = returnFunc(ctx, filter, update, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*mongo.UpdateResult)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, interface{}, interface{}, ...options.Lister[options.UpdateOneOptions]) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, any, any, ...options.Lister[options.UpdateOneOptions]) error); ok {
 		r1 = returnFunc(ctx, filter, update, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -390,27 +390,27 @@ type CollectionInterfaceMock_UpdateOne_Call struct {
 
 // UpdateOne is a helper method to define mock.On call
 //   - ctx context.Context
-//   - filter interface{}
-//   - update interface{}
+//   - filter any
+//   - update any
 //   - opts ...options.Lister[options.UpdateOneOptions]
 func (_e *CollectionInterfaceMock_Expecter) UpdateOne(ctx any, filter any, update any, opts ...any) *CollectionInterfaceMock_UpdateOne_Call {
 	return &CollectionInterfaceMock_UpdateOne_Call{Call: _e.mock.On("UpdateOne",
 		append([]any{ctx, filter, update}, opts...)...)}
 }
 
-func (_c *CollectionInterfaceMock_UpdateOne_Call) Run(run func(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions])) *CollectionInterfaceMock_UpdateOne_Call {
+func (_c *CollectionInterfaceMock_UpdateOne_Call) Run(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateOneOptions])) *CollectionInterfaceMock_UpdateOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
 		}
-		var arg2 interface{}
+		var arg2 any
 		if args[2] != nil {
-			arg2 = args[2].(interface{})
+			arg2 = args[2].(any)
 		}
 		var arg3 []options.Lister[options.UpdateOneOptions]
 		variadicArgs := make([]options.Lister[options.UpdateOneOptions], len(args)-3)
@@ -435,13 +435,13 @@ func (_c *CollectionInterfaceMock_UpdateOne_Call) Return(res *mongo.UpdateResult
 	return _c
 }
 
-func (_c *CollectionInterfaceMock_UpdateOne_Call) RunAndReturn(run func(ctx context.Context, filter interface{}, update interface{}, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)) *CollectionInterfaceMock_UpdateOne_Call {
+func (_c *CollectionInterfaceMock_UpdateOne_Call) RunAndReturn(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)) *CollectionInterfaceMock_UpdateOne_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Watch provides a mock function for the type CollectionInterfaceMock
-func (_mock *CollectionInterfaceMock) Watch(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.ChangeStreamOptions]) (*mongo.ChangeStream, error) {
+func (_mock *CollectionInterfaceMock) Watch(ctx context.Context, pipeline any, opts ...options.Lister[options.ChangeStreamOptions]) (*mongo.ChangeStream, error) {
 	// options.Lister[options.ChangeStreamOptions]
 	_va := make([]any, len(opts))
 	for _i := range opts {
@@ -458,17 +458,17 @@ func (_mock *CollectionInterfaceMock) Watch(ctx context.Context, pipeline interf
 
 	var r0 *mongo.ChangeStream
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, ...options.Lister[options.ChangeStreamOptions]) (*mongo.ChangeStream, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, ...options.Lister[options.ChangeStreamOptions]) (*mongo.ChangeStream, error)); ok {
 		return returnFunc(ctx, pipeline, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, interface{}, ...options.Lister[options.ChangeStreamOptions]) *mongo.ChangeStream); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, ...options.Lister[options.ChangeStreamOptions]) *mongo.ChangeStream); ok {
 		r0 = returnFunc(ctx, pipeline, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*mongo.ChangeStream)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, interface{}, ...options.Lister[options.ChangeStreamOptions]) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, any, ...options.Lister[options.ChangeStreamOptions]) error); ok {
 		r1 = returnFunc(ctx, pipeline, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -483,22 +483,22 @@ type CollectionInterfaceMock_Watch_Call struct {
 
 // Watch is a helper method to define mock.On call
 //   - ctx context.Context
-//   - pipeline interface{}
+//   - pipeline any
 //   - opts ...options.Lister[options.ChangeStreamOptions]
 func (_e *CollectionInterfaceMock_Expecter) Watch(ctx any, pipeline any, opts ...any) *CollectionInterfaceMock_Watch_Call {
 	return &CollectionInterfaceMock_Watch_Call{Call: _e.mock.On("Watch",
 		append([]any{ctx, pipeline}, opts...)...)}
 }
 
-func (_c *CollectionInterfaceMock_Watch_Call) Run(run func(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.ChangeStreamOptions])) *CollectionInterfaceMock_Watch_Call {
+func (_c *CollectionInterfaceMock_Watch_Call) Run(run func(ctx context.Context, pipeline any, opts ...options.Lister[options.ChangeStreamOptions])) *CollectionInterfaceMock_Watch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
 		}
 		var arg2 []options.Lister[options.ChangeStreamOptions]
 		variadicArgs := make([]options.Lister[options.ChangeStreamOptions], len(args)-2)
@@ -522,7 +522,7 @@ func (_c *CollectionInterfaceMock_Watch_Call) Return(stream *mongo.ChangeStream,
 	return _c
 }
 
-func (_c *CollectionInterfaceMock_Watch_Call) RunAndReturn(run func(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.ChangeStreamOptions]) (*mongo.ChangeStream, error)) *CollectionInterfaceMock_Watch_Call {
+func (_c *CollectionInterfaceMock_Watch_Call) RunAndReturn(run func(ctx context.Context, pipeline any, opts ...options.Lister[options.ChangeStreamOptions]) (*mongo.ChangeStream, error)) *CollectionInterfaceMock_Watch_Call {
 	_c.Call.Return(run)
 	return _c
 }

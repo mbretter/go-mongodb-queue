@@ -40,63 +40,17 @@ func (_m *DbInterfaceMock) EXPECT() *DbInterfaceMock_Expecter {
 	return &DbInterfaceMock_Expecter{mock: &_m.Mock}
 }
 
-// Context provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) Context() context.Context {
-	ret := _mock.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Context")
-	}
-
-	var r0 context.Context
-	if returnFunc, ok := ret.Get(0).(func() context.Context); ok {
-		r0 = returnFunc()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(context.Context)
-		}
-	}
-	return r0
-}
-
-// DbInterfaceMock_Context_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Context'
-type DbInterfaceMock_Context_Call struct {
-	*mock.Call
-}
-
-// Context is a helper method to define mock.On call
-func (_e *DbInterfaceMock_Expecter) Context() *DbInterfaceMock_Context_Call {
-	return &DbInterfaceMock_Context_Call{Call: _e.mock.On("Context")}
-}
-
-func (_c *DbInterfaceMock_Context_Call) Run(run func()) *DbInterfaceMock_Context_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *DbInterfaceMock_Context_Call) Return(context1 context.Context) *DbInterfaceMock_Context_Call {
-	_c.Call.Return(context1)
-	return _c
-}
-
-func (_c *DbInterfaceMock_Context_Call) RunAndReturn(run func() context.Context) *DbInterfaceMock_Context_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateIndexes provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) CreateIndexes(index []mongo.IndexModel) error {
-	ret := _mock.Called(index)
+func (_mock *DbInterfaceMock) CreateIndexes(ctx context.Context, index []mongo.IndexModel) error {
+	ret := _mock.Called(ctx, index)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateIndexes")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func([]mongo.IndexModel) error); ok {
-		r0 = returnFunc(index)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []mongo.IndexModel) error); ok {
+		r0 = returnFunc(ctx, index)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -109,19 +63,25 @@ type DbInterfaceMock_CreateIndexes_Call struct {
 }
 
 // CreateIndexes is a helper method to define mock.On call
+//   - ctx context.Context
 //   - index []mongo.IndexModel
-func (_e *DbInterfaceMock_Expecter) CreateIndexes(index any) *DbInterfaceMock_CreateIndexes_Call {
-	return &DbInterfaceMock_CreateIndexes_Call{Call: _e.mock.On("CreateIndexes", index)}
+func (_e *DbInterfaceMock_Expecter) CreateIndexes(ctx any, index any) *DbInterfaceMock_CreateIndexes_Call {
+	return &DbInterfaceMock_CreateIndexes_Call{Call: _e.mock.On("CreateIndexes", ctx, index)}
 }
 
-func (_c *DbInterfaceMock_CreateIndexes_Call) Run(run func(index []mongo.IndexModel)) *DbInterfaceMock_CreateIndexes_Call {
+func (_c *DbInterfaceMock_CreateIndexes_Call) Run(run func(ctx context.Context, index []mongo.IndexModel)) *DbInterfaceMock_CreateIndexes_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 []mongo.IndexModel
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].([]mongo.IndexModel)
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []mongo.IndexModel
+		if args[1] != nil {
+			arg1 = args[1].([]mongo.IndexModel)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -132,20 +92,20 @@ func (_c *DbInterfaceMock_CreateIndexes_Call) Return(err error) *DbInterfaceMock
 	return _c
 }
 
-func (_c *DbInterfaceMock_CreateIndexes_Call) RunAndReturn(run func(index []mongo.IndexModel) error) *DbInterfaceMock_CreateIndexes_Call {
+func (_c *DbInterfaceMock_CreateIndexes_Call) RunAndReturn(run func(ctx context.Context, index []mongo.IndexModel) error) *DbInterfaceMock_CreateIndexes_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FindOneAndUpdate provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) FindOneAndUpdate(filter interface{}, update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult {
+func (_mock *DbInterfaceMock) FindOneAndUpdate(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult {
 	// options.Lister[options.FindOneAndUpdateOptions]
 	_va := make([]any, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
 	}
 	var _ca []any
-	_ca = append(_ca, filter, update)
+	_ca = append(_ca, ctx, filter, update)
 	_ca = append(_ca, _va...)
 	ret := _mock.Called(_ca...)
 
@@ -154,8 +114,8 @@ func (_mock *DbInterfaceMock) FindOneAndUpdate(filter interface{}, update interf
 	}
 
 	var r0 *mongo.SingleResult
-	if returnFunc, ok := ret.Get(0).(func(interface{}, interface{}, ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult); ok {
-		r0 = returnFunc(filter, update, opts...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any, ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult); ok {
+		r0 = returnFunc(ctx, filter, update, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*mongo.SingleResult)
@@ -170,36 +130,42 @@ type DbInterfaceMock_FindOneAndUpdate_Call struct {
 }
 
 // FindOneAndUpdate is a helper method to define mock.On call
-//   - filter interface{}
-//   - update interface{}
+//   - ctx context.Context
+//   - filter any
+//   - update any
 //   - opts ...options.Lister[options.FindOneAndUpdateOptions]
-func (_e *DbInterfaceMock_Expecter) FindOneAndUpdate(filter any, update any, opts ...any) *DbInterfaceMock_FindOneAndUpdate_Call {
+func (_e *DbInterfaceMock_Expecter) FindOneAndUpdate(ctx any, filter any, update any, opts ...any) *DbInterfaceMock_FindOneAndUpdate_Call {
 	return &DbInterfaceMock_FindOneAndUpdate_Call{Call: _e.mock.On("FindOneAndUpdate",
-		append([]any{filter, update}, opts...)...)}
+		append([]any{ctx, filter, update}, opts...)...)}
 }
 
-func (_c *DbInterfaceMock_FindOneAndUpdate_Call) Run(run func(filter interface{}, update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions])) *DbInterfaceMock_FindOneAndUpdate_Call {
+func (_c *DbInterfaceMock_FindOneAndUpdate_Call) Run(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions])) *DbInterfaceMock_FindOneAndUpdate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 interface{}
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(interface{})
+			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
 		}
-		var arg2 []options.Lister[options.FindOneAndUpdateOptions]
-		variadicArgs := make([]options.Lister[options.FindOneAndUpdateOptions], len(args)-2)
-		for i, a := range args[2:] {
+		var arg2 any
+		if args[2] != nil {
+			arg2 = args[2].(any)
+		}
+		var arg3 []options.Lister[options.FindOneAndUpdateOptions]
+		variadicArgs := make([]options.Lister[options.FindOneAndUpdateOptions], len(args)-3)
+		for i, a := range args[3:] {
 			if a != nil {
 				variadicArgs[i] = a.(options.Lister[options.FindOneAndUpdateOptions])
 			}
 		}
-		arg2 = variadicArgs
+		arg3 = variadicArgs
 		run(
 			arg0,
 			arg1,
-			arg2...,
+			arg2,
+			arg3...,
 		)
 	})
 	return _c
@@ -210,14 +176,14 @@ func (_c *DbInterfaceMock_FindOneAndUpdate_Call) Return(singleResult *mongo.Sing
 	return _c
 }
 
-func (_c *DbInterfaceMock_FindOneAndUpdate_Call) RunAndReturn(run func(filter interface{}, update interface{}, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult) *DbInterfaceMock_FindOneAndUpdate_Call {
+func (_c *DbInterfaceMock_FindOneAndUpdate_Call) RunAndReturn(run func(ctx context.Context, filter any, update any, opts ...options.Lister[options.FindOneAndUpdateOptions]) *mongo.SingleResult) *DbInterfaceMock_FindOneAndUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // InsertOne provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) InsertOne(document interface{}) (bson.ObjectID, error) {
-	ret := _mock.Called(document)
+func (_mock *DbInterfaceMock) InsertOne(ctx context.Context, document any) (bson.ObjectID, error) {
+	ret := _mock.Called(ctx, document)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InsertOne")
@@ -225,18 +191,18 @@ func (_mock *DbInterfaceMock) InsertOne(document interface{}) (bson.ObjectID, er
 
 	var r0 bson.ObjectID
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(interface{}) (bson.ObjectID, error)); ok {
-		return returnFunc(document)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any) (bson.ObjectID, error)); ok {
+		return returnFunc(ctx, document)
 	}
-	if returnFunc, ok := ret.Get(0).(func(interface{}) bson.ObjectID); ok {
-		r0 = returnFunc(document)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any) bson.ObjectID); ok {
+		r0 = returnFunc(ctx, document)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(bson.ObjectID)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(interface{}) error); ok {
-		r1 = returnFunc(document)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, any) error); ok {
+		r1 = returnFunc(ctx, document)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -249,19 +215,25 @@ type DbInterfaceMock_InsertOne_Call struct {
 }
 
 // InsertOne is a helper method to define mock.On call
-//   - document interface{}
-func (_e *DbInterfaceMock_Expecter) InsertOne(document any) *DbInterfaceMock_InsertOne_Call {
-	return &DbInterfaceMock_InsertOne_Call{Call: _e.mock.On("InsertOne", document)}
+//   - ctx context.Context
+//   - document any
+func (_e *DbInterfaceMock_Expecter) InsertOne(ctx any, document any) *DbInterfaceMock_InsertOne_Call {
+	return &DbInterfaceMock_InsertOne_Call{Call: _e.mock.On("InsertOne", ctx, document)}
 }
 
-func (_c *DbInterfaceMock_InsertOne_Call) Run(run func(document interface{})) *DbInterfaceMock_InsertOne_Call {
+func (_c *DbInterfaceMock_InsertOne_Call) Run(run func(ctx context.Context, document any)) *DbInterfaceMock_InsertOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 interface{}
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(interface{})
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 any
+		if args[1] != nil {
+			arg1 = args[1].(any)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -272,22 +244,22 @@ func (_c *DbInterfaceMock_InsertOne_Call) Return(objectID bson.ObjectID, err err
 	return _c
 }
 
-func (_c *DbInterfaceMock_InsertOne_Call) RunAndReturn(run func(document interface{}) (bson.ObjectID, error)) *DbInterfaceMock_InsertOne_Call {
+func (_c *DbInterfaceMock_InsertOne_Call) RunAndReturn(run func(ctx context.Context, document any) (bson.ObjectID, error)) *DbInterfaceMock_InsertOne_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateMany provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) UpdateMany(filter interface{}, update interface{}) error {
-	ret := _mock.Called(filter, update)
+func (_mock *DbInterfaceMock) UpdateMany(ctx context.Context, filter any, update any) error {
+	ret := _mock.Called(ctx, filter, update)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateMany")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(interface{}, interface{}) error); ok {
-		r0 = returnFunc(filter, update)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any) error); ok {
+		r0 = returnFunc(ctx, filter, update)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -300,25 +272,31 @@ type DbInterfaceMock_UpdateMany_Call struct {
 }
 
 // UpdateMany is a helper method to define mock.On call
-//   - filter interface{}
-//   - update interface{}
-func (_e *DbInterfaceMock_Expecter) UpdateMany(filter any, update any) *DbInterfaceMock_UpdateMany_Call {
-	return &DbInterfaceMock_UpdateMany_Call{Call: _e.mock.On("UpdateMany", filter, update)}
+//   - ctx context.Context
+//   - filter any
+//   - update any
+func (_e *DbInterfaceMock_Expecter) UpdateMany(ctx any, filter any, update any) *DbInterfaceMock_UpdateMany_Call {
+	return &DbInterfaceMock_UpdateMany_Call{Call: _e.mock.On("UpdateMany", ctx, filter, update)}
 }
 
-func (_c *DbInterfaceMock_UpdateMany_Call) Run(run func(filter interface{}, update interface{})) *DbInterfaceMock_UpdateMany_Call {
+func (_c *DbInterfaceMock_UpdateMany_Call) Run(run func(ctx context.Context, filter any, update any)) *DbInterfaceMock_UpdateMany_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 interface{}
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(interface{})
+			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
+		}
+		var arg2 any
+		if args[2] != nil {
+			arg2 = args[2].(any)
 		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -329,22 +307,22 @@ func (_c *DbInterfaceMock_UpdateMany_Call) Return(err error) *DbInterfaceMock_Up
 	return _c
 }
 
-func (_c *DbInterfaceMock_UpdateMany_Call) RunAndReturn(run func(filter interface{}, update interface{}) error) *DbInterfaceMock_UpdateMany_Call {
+func (_c *DbInterfaceMock_UpdateMany_Call) RunAndReturn(run func(ctx context.Context, filter any, update any) error) *DbInterfaceMock_UpdateMany_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateOne provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) UpdateOne(filter interface{}, update interface{}) error {
-	ret := _mock.Called(filter, update)
+func (_mock *DbInterfaceMock) UpdateOne(ctx context.Context, filter any, update any) error {
+	ret := _mock.Called(ctx, filter, update)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateOne")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(interface{}, interface{}) error); ok {
-		r0 = returnFunc(filter, update)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any, any) error); ok {
+		r0 = returnFunc(ctx, filter, update)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -357,25 +335,31 @@ type DbInterfaceMock_UpdateOne_Call struct {
 }
 
 // UpdateOne is a helper method to define mock.On call
-//   - filter interface{}
-//   - update interface{}
-func (_e *DbInterfaceMock_Expecter) UpdateOne(filter any, update any) *DbInterfaceMock_UpdateOne_Call {
-	return &DbInterfaceMock_UpdateOne_Call{Call: _e.mock.On("UpdateOne", filter, update)}
+//   - ctx context.Context
+//   - filter any
+//   - update any
+func (_e *DbInterfaceMock_Expecter) UpdateOne(ctx any, filter any, update any) *DbInterfaceMock_UpdateOne_Call {
+	return &DbInterfaceMock_UpdateOne_Call{Call: _e.mock.On("UpdateOne", ctx, filter, update)}
 }
 
-func (_c *DbInterfaceMock_UpdateOne_Call) Run(run func(filter interface{}, update interface{})) *DbInterfaceMock_UpdateOne_Call {
+func (_c *DbInterfaceMock_UpdateOne_Call) Run(run func(ctx context.Context, filter any, update any)) *DbInterfaceMock_UpdateOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 interface{}
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(interface{})
+			arg0 = args[0].(context.Context)
 		}
-		var arg1 interface{}
+		var arg1 any
 		if args[1] != nil {
-			arg1 = args[1].(interface{})
+			arg1 = args[1].(any)
+		}
+		var arg2 any
+		if args[2] != nil {
+			arg2 = args[2].(any)
 		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -386,14 +370,14 @@ func (_c *DbInterfaceMock_UpdateOne_Call) Return(err error) *DbInterfaceMock_Upd
 	return _c
 }
 
-func (_c *DbInterfaceMock_UpdateOne_Call) RunAndReturn(run func(filter interface{}, update interface{}) error) *DbInterfaceMock_UpdateOne_Call {
+func (_c *DbInterfaceMock_UpdateOne_Call) RunAndReturn(run func(ctx context.Context, filter any, update any) error) *DbInterfaceMock_UpdateOne_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Watch provides a mock function for the type DbInterfaceMock
-func (_mock *DbInterfaceMock) Watch(pipeline interface{}) (ChangeStreamInterface, error) {
-	ret := _mock.Called(pipeline)
+func (_mock *DbInterfaceMock) Watch(ctx context.Context, pipeline any) (ChangeStreamInterface, error) {
+	ret := _mock.Called(ctx, pipeline)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Watch")
@@ -401,18 +385,18 @@ func (_mock *DbInterfaceMock) Watch(pipeline interface{}) (ChangeStreamInterface
 
 	var r0 ChangeStreamInterface
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(interface{}) (ChangeStreamInterface, error)); ok {
-		return returnFunc(pipeline)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any) (ChangeStreamInterface, error)); ok {
+		return returnFunc(ctx, pipeline)
 	}
-	if returnFunc, ok := ret.Get(0).(func(interface{}) ChangeStreamInterface); ok {
-		r0 = returnFunc(pipeline)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, any) ChangeStreamInterface); ok {
+		r0 = returnFunc(ctx, pipeline)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ChangeStreamInterface)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(interface{}) error); ok {
-		r1 = returnFunc(pipeline)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, any) error); ok {
+		r1 = returnFunc(ctx, pipeline)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -425,19 +409,25 @@ type DbInterfaceMock_Watch_Call struct {
 }
 
 // Watch is a helper method to define mock.On call
-//   - pipeline interface{}
-func (_e *DbInterfaceMock_Expecter) Watch(pipeline any) *DbInterfaceMock_Watch_Call {
-	return &DbInterfaceMock_Watch_Call{Call: _e.mock.On("Watch", pipeline)}
+//   - ctx context.Context
+//   - pipeline any
+func (_e *DbInterfaceMock_Expecter) Watch(ctx any, pipeline any) *DbInterfaceMock_Watch_Call {
+	return &DbInterfaceMock_Watch_Call{Call: _e.mock.On("Watch", ctx, pipeline)}
 }
 
-func (_c *DbInterfaceMock_Watch_Call) Run(run func(pipeline interface{})) *DbInterfaceMock_Watch_Call {
+func (_c *DbInterfaceMock_Watch_Call) Run(run func(ctx context.Context, pipeline any)) *DbInterfaceMock_Watch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 interface{}
+		var arg0 context.Context
 		if args[0] != nil {
-			arg0 = args[0].(interface{})
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 any
+		if args[1] != nil {
+			arg1 = args[1].(any)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -448,7 +438,7 @@ func (_c *DbInterfaceMock_Watch_Call) Return(changeStreamInterface ChangeStreamI
 	return _c
 }
 
-func (_c *DbInterfaceMock_Watch_Call) RunAndReturn(run func(pipeline interface{}) (ChangeStreamInterface, error)) *DbInterfaceMock_Watch_Call {
+func (_c *DbInterfaceMock_Watch_Call) RunAndReturn(run func(ctx context.Context, pipeline any) (ChangeStreamInterface, error)) *DbInterfaceMock_Watch_Call {
 	_c.Call.Return(run)
 	return _c
 }

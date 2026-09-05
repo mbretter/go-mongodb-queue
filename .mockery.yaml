@@ -6,7 +6,7 @@ template: testify
 template-data:
   unroll-variadic: true
 packages:
-  github.com/mbretter/go-mongodb-queue/v2:
+  github.com/mbretter/go-mongodb-queue/v3:
     interfaces:
       DbInterface:
       ChangeStreamInterface:
